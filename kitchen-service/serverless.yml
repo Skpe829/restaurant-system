@@ -1,0 +1,93 @@
+service: restaurant-kitchen-service
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+
+custom:
+  httpApi:
+    cors:
+      allowedOrigins:
+        - "http://localhost:3000"
+        - "https://*.vercel.app"
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+
+functions:
+  web:
+    handler: public/index.php
+    timeout: 28
+    memorySize: 512
+    layers:
+      - ${bref:layer.php-82-fpm}
+    environment:
+      BREF_BINARY_RESPONSES: 1
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: base64:JAbdTqOSzQ3KMOzNZlcACy/rQbyQlnzRy6vEb/APe/8=
+      DB_CONNECTION: array
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      # URL del Order Service
+      ORDER_SERVICE_URL: ${cf:restaurant-order-service-${self:provider.stage}.OrderServiceUrl}
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+      - httpApi:
+          path: /
+          method: ANY
+
+  artisan:
+    handler: artisan
+    timeout: 120
+    layers:
+      - ${bref:layer.php-82}
+      - ${bref:layer.console}
+
+resources:
+  Resources:
+    RecipesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: restaurant-recipes-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+  Outputs:
+    KitchenServiceUrl:
+      Description: "Kitchen Service API URL"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: HttpApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com'
+      Export:
+        Name: KitchenServiceUrl-${self:provider.stage}
+
+plugins:
+  - ./vendor/bref/bref

@@ -16,7 +16,6 @@ custom:
       allowedOrigins:
         - "http://localhost:3000"
         - "https://*.vercel.app"
-        - "https://*.netlify.app"
       allowedHeaders:
         - Content-Type
         - Authorization
