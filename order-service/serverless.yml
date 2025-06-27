@@ -1,0 +1,109 @@
+service: restaurant-order-service
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+
+custom:
+  httpApi:
+    cors:
+      allowedOrigins:
+        - "http://localhost:3000"
+        - "https://*.vercel.app"
+        - "https://*.netlify.app"
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+
+functions:
+  web:
+    handler: public/index.php
+    timeout: 28
+    memorySize: 512
+    layers:
+      - ${bref:layer.php-82-fpm}
+    environment:
+      BREF_BINARY_RESPONSES: 1
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: base64:Pxn3KuFjKOybk4GJa/yApPhT2BU4xQj89pnXdxxW7dE=
+      DB_CONNECTION: array
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      # URLs de otros microservicios (se configurarán después)
+      KITCHEN_SERVICE_URL: ""
+      WAREHOUSE_SERVICE_URL: ""
+      MARKETPLACE_SERVICE_URL: ""
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+      - httpApi:
+          path: /
+          method: ANY
+
+  artisan:
+    handler: artisan
+    timeout: 120
+    layers:
+      - ${bref:layer.php-82}
+      - ${bref:layer.console}
+    environment:
+      APP_ENV: production
+      APP_KEY: "base64:GENERATE_THIS"
+      DB_CONNECTION: array
+
+resources:
+  Resources:
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: restaurant-orders-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: status
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: status-index
+            KeySchema:
+              - AttributeName: status
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+  Outputs:
+    OrderServiceUrl:
+      Description: "Order Service API URL"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: HttpApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com'
+      Export:
+        Name: OrderServiceUrl-${self:provider.stage}
+
+plugins:
+  - ./vendor/bref/bref
