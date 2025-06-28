@@ -2,75 +2,120 @@
 
 namespace App\Models;
 
-use Kitar\Dynamodb\Model\Model;
+use Aws\DynamoDb\DynamoDbClient;
+use Aws\DynamoDb\Exception\DynamoDbException;
 use Illuminate\Support\Facades\Log;
 
-class Inventory extends Model
+class Inventory
 {
-    protected $connection = 'dynamodb';
-    protected $table = 'restaurant-inventory-dev';
-    protected $primaryKey = 'ingredient';
-    protected $keyType = 'string';
-    public $incrementing = false;
-    public $timestamps = false;
+    private static $dynamoDb = null;
+    private static $tableName = null;
 
-    protected $fillable = [
-        'ingredient',
-        'quantity',
-        'reserved_quantity',
-        'unit',
-        'last_updated'
-    ];
+    // Propiedades del modelo
+    public $ingredient;
+    public $quantity;
+    public $reserved_quantity;
+    public $unit;
+    public $last_updated;
 
-    protected $casts = [
-        'quantity' => 'integer',
-        'reserved_quantity' => 'integer',
-        'last_updated' => 'datetime'
-    ];
+    public function __construct(array $attributes = [])
+    {
+        foreach ($attributes as $key => $value) {
+            if (property_exists($this, $key)) {
+                $this->$key = $value;
+            }
+        }
+    }
+
+    // ✅ Inicializar cliente DynamoDB
+    private static function getDynamoDb(): DynamoDbClient
+    {
+        if (self::$dynamoDb === null) {
+            self::$dynamoDb = new DynamoDbClient([
+                'version' => 'latest',
+                'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            ]);
+        }
+
+        return self::$dynamoDb;
+    }
+
+    // ✅ Obtener nombre de tabla
+    private static function getTableName(): string
+    {
+        if (self::$tableName === null) {
+            // ✅ Usar el nombre exacto que vimos en el deployment
+            self::$tableName = 'restaurant-inventory-dev';
+        }
+
+        return self::$tableName;
+    }
 
     // ✅ Inventario inicial optimizado para las recetas del sistema
+    // ✅ Inventario inicial que coincide exactamente con las recetas del Kitchen Service
     public static function getInitialInventory(): array
     {
         return [
-            'tomato' => ['quantity' => 10, 'unit' => 'kg'],
-            'cheese' => ['quantity' => 10, 'unit' => 'kg'],
+            // Ingredientes principales de las recetas
+            'tomato' => ['quantity' => 15, 'unit' => 'kg'],
+            'cheese' => ['quantity' => 12, 'unit' => 'kg'],
             'onion' => ['quantity' => 10, 'unit' => 'kg'],
+            'lettuce' => ['quantity' => 8, 'unit' => 'kg'],
+            'meat' => ['quantity' => 15, 'unit' => 'kg'],
+            'chicken' => ['quantity' => 15, 'unit' => 'kg'],
+            'rice' => ['quantity' => 12, 'unit' => 'kg'],
+            'lemon' => ['quantity' => 8, 'unit' => 'kg'],
+            'potato' => ['quantity' => 10, 'unit' => 'kg'],
+
+            // Ingredientes de cocina
             'flour' => ['quantity' => 10, 'unit' => 'kg'],
             'olive_oil' => ['quantity' => 8, 'unit' => 'liters'],
-            'lettuce' => ['quantity' => 8, 'unit' => 'kg'],
-            'lemon' => ['quantity' => 8, 'unit' => 'kg'],
             'croutons' => ['quantity' => 5, 'unit' => 'kg'],
-            'chicken' => ['quantity' => 15, 'unit' => 'kg'],
-            'potato' => ['quantity' => 10, 'unit' => 'kg'],
-            'meat' => ['quantity' => 15, 'unit' => 'kg'],
-            'rice' => ['quantity' => 12, 'unit' => 'kg'],
+
+            // Ingrediente extra de la lista original
             'ketchup' => ['quantity' => 5, 'unit' => 'liters'],
-            // Ingredientes adicionales comunes
-            'mozzarella' => ['quantity' => 8, 'unit' => 'kg'],
-            'basil' => ['quantity' => 3, 'unit' => 'kg'],
-            'parmesan' => ['quantity' => 5, 'unit' => 'kg'],
-            'beef' => ['quantity' => 12, 'unit' => 'kg'],
-            'fish' => ['quantity' => 10, 'unit' => 'kg']
         ];
     }
 
+    // ✅ Inicializar inventario en DynamoDB
     public static function initializeInventory(): array
     {
         $initialInventory = self::getInitialInventory();
         $results = [];
+        $dynamoDb = self::getDynamoDb();
+        $tableName = self::getTableName();
 
         try {
             foreach ($initialInventory as $ingredient => $data) {
-                // Usar updateOrCreate para DynamoDB
-                $inventory = self::updateOrCreate(
-                    ['ingredient' => $ingredient],
-                    [
-                        'quantity' => $data['quantity'],
-                        'reserved_quantity' => 0,
-                        'unit' => $data['unit'],
-                        'last_updated' => now()->toISOString()
+                // Verificar si el item ya existe
+                $existingItem = self::findByIngredient($ingredient);
+
+                if ($existingItem) {
+                    $results[] = [
+                        'ingredient' => $ingredient,
+                        'quantity' => $existingItem->quantity,
+                        'unit' => $existingItem->unit,
+                        'reserved_quantity' => $existingItem->reserved_quantity,
+                        'available_quantity' => $existingItem->getAvailableQuantity(),
+                        'status' => 'already_exists',
+                        'last_updated' => $existingItem->last_updated
+                    ];
+                    continue;
+                }
+
+                // Crear nuevo item
+                $timestamp = now()->toISOString();
+
+                $response = $dynamoDb->putItem([
+                    'TableName' => $tableName,
+                    'Item' => [
+                        'ingredient' => ['S' => $ingredient],
+                        'quantity' => ['N' => (string) $data['quantity']],
+                        'reserved_quantity' => ['N' => '0'],
+                        'unit' => ['S' => $data['unit']],
+                        'last_updated' => ['S' => $timestamp]
                     ]
-                );
+                ]);
 
                 $results[] = [
                     'ingredient' => $ingredient,
@@ -79,7 +124,7 @@ class Inventory extends Model
                     'reserved_quantity' => 0,
                     'available_quantity' => $data['quantity'],
                     'status' => 'initialized',
-                    'last_updated' => now()->toISOString()
+                    'last_updated' => $timestamp
                 ];
 
                 Log::info("Initialized inventory for {$ingredient}", [
@@ -94,12 +139,127 @@ class Inventory extends Model
 
             return $results;
 
+        } catch (DynamoDbException $e) {
+            Log::error('DynamoDB error during initialization: ' . $e->getMessage());
+            throw new \Exception('Failed to initialize inventory in DynamoDB: ' . $e->getMessage());
         } catch (\Exception $e) {
-            Log::error('Failed to initialize inventory: ' . $e->getMessage());
+            Log::error('General error during initialization: ' . $e->getMessage());
             throw $e;
         }
     }
 
+    // ✅ Buscar item por ingrediente
+    public static function findByIngredient(string $ingredient): ?self
+    {
+        try {
+            $dynamoDb = self::getDynamoDb();
+            $tableName = self::getTableName();
+
+            $response = $dynamoDb->getItem([
+                'TableName' => $tableName,
+                'Key' => [
+                    'ingredient' => ['S' => $ingredient]
+                ]
+            ]);
+
+            if (!isset($response['Item'])) {
+                return null;
+            }
+
+            $item = $response['Item'];
+
+            return new self([
+                'ingredient' => $item['ingredient']['S'] ?? '',
+                'quantity' => (int) ($item['quantity']['N'] ?? 0),
+                'reserved_quantity' => (int) ($item['reserved_quantity']['N'] ?? 0),
+                'unit' => $item['unit']['S'] ?? '',
+                'last_updated' => $item['last_updated']['S'] ?? ''
+            ]);
+
+        } catch (DynamoDbException $e) {
+            Log::error("DynamoDB error finding ingredient {$ingredient}: " . $e->getMessage());
+            return null;
+        } catch (\Exception $e) {
+            Log::error("General error finding ingredient {$ingredient}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    // ✅ Obtener todo el inventario
+    public static function getAllInventory(): array
+    {
+        try {
+            $dynamoDb = self::getDynamoDb();
+            $tableName = self::getTableName();
+
+            $response = $dynamoDb->scan([
+                'TableName' => $tableName
+            ]);
+
+            $inventory = [];
+
+            foreach ($response['Items'] as $item) {
+                $inventoryItem = new self([
+                    'ingredient' => $item['ingredient']['S'] ?? '',
+                    'quantity' => (int) ($item['quantity']['N'] ?? 0),
+                    'reserved_quantity' => (int) ($item['reserved_quantity']['N'] ?? 0),
+                    'unit' => $item['unit']['S'] ?? '',
+                    'last_updated' => $item['last_updated']['S'] ?? ''
+                ]);
+
+                $inventory[] = [
+                    'ingredient' => $inventoryItem->ingredient,
+                    'total_quantity' => $inventoryItem->quantity,
+                    'available_quantity' => $inventoryItem->getAvailableQuantity(),
+                    'reserved_quantity' => $inventoryItem->reserved_quantity,
+                    'unit' => $inventoryItem->unit,
+                    'last_updated' => $inventoryItem->last_updated
+                ];
+            }
+
+            return $inventory;
+
+        } catch (DynamoDbException $e) {
+            Log::error('DynamoDB error getting all inventory: ' . $e->getMessage());
+            return [];
+        } catch (\Exception $e) {
+            Log::error('General error getting all inventory: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    // ✅ Guardar cambios en DynamoDB
+    public function save(): bool
+    {
+        try {
+            $dynamoDb = self::getDynamoDb();
+            $tableName = self::getTableName();
+
+            $this->last_updated = now()->toISOString();
+
+            $response = $dynamoDb->putItem([
+                'TableName' => $tableName,
+                'Item' => [
+                    'ingredient' => ['S' => $this->ingredient],
+                    'quantity' => ['N' => (string) $this->quantity],
+                    'reserved_quantity' => ['N' => (string) $this->reserved_quantity],
+                    'unit' => ['S' => $this->unit],
+                    'last_updated' => ['S' => $this->last_updated]
+                ]
+            ]);
+
+            return true;
+
+        } catch (DynamoDbException $e) {
+            Log::error("DynamoDB error saving {$this->ingredient}: " . $e->getMessage());
+            return false;
+        } catch (\Exception $e) {
+            Log::error("General error saving {$this->ingredient}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // ✅ Métodos de negocio
     public function getAvailableQuantity(): int
     {
         return $this->quantity - $this->reserved_quantity;
@@ -121,21 +281,16 @@ class Inventory extends Model
         }
 
         $this->reserved_quantity += $amount;
-        $this->last_updated = now()->toISOString();
-        
-        try {
-            $this->save();
-            
+
+        if ($this->save()) {
             Log::info("Reserved {$amount} units of {$this->ingredient}", [
                 'new_reserved' => $this->reserved_quantity,
                 'available' => $this->getAvailableQuantity()
             ]);
-            
             return true;
-        } catch (\Exception $e) {
-            Log::error("Failed to save reservation for {$this->ingredient}: " . $e->getMessage());
-            return false;
         }
+
+        return false;
     }
 
     public function consume(int $amount): bool
@@ -150,74 +305,30 @@ class Inventory extends Model
 
         $this->quantity -= $amount;
         $this->reserved_quantity -= $amount;
-        $this->last_updated = now()->toISOString();
 
-        try {
-            $this->save();
-            
+        if ($this->save()) {
             Log::info("Consumed {$amount} units of {$this->ingredient}", [
                 'new_quantity' => $this->quantity,
                 'new_reserved' => $this->reserved_quantity
             ]);
-            
             return true;
-        } catch (\Exception $e) {
-            Log::error("Failed to save consumption for {$this->ingredient}: " . $e->getMessage());
-            return false;
         }
+
+        return false;
     }
 
-    public function addStock(int $amount): void
+    public function addStock(int $amount): bool
     {
         $this->quantity += $amount;
-        $this->last_updated = now()->toISOString();
 
-        try {
-            $this->save();
-            
+        if ($this->save()) {
             Log::info("Added {$amount} units to {$this->ingredient}", [
                 'new_quantity' => $this->quantity,
                 'available' => $this->getAvailableQuantity()
             ]);
-        } catch (\Exception $e) {
-            Log::error("Failed to add stock for {$this->ingredient}: " . $e->getMessage());
-            throw $e;
+            return true;
         }
-    }
 
-    // ✅ Método helper para obtener todos los inventarios
-    public static function getAllInventory(): array
-    {
-        try {
-            $items = self::all();
-            $inventory = [];
-
-            foreach ($items as $item) {
-                $inventory[] = [
-                    'ingredient' => $item->ingredient,
-                    'total_quantity' => $item->quantity,
-                    'available_quantity' => $item->getAvailableQuantity(),
-                    'reserved_quantity' => $item->reserved_quantity,
-                    'unit' => $item->unit,
-                    'last_updated' => $item->last_updated
-                ];
-            }
-
-            return $inventory;
-        } catch (\Exception $e) {
-            Log::error('Failed to get all inventory: ' . $e->getMessage());
-            return [];
-        }
-    }
-
-    // ✅ Método helper para buscar por ingrediente
-    public static function findByIngredient(string $ingredient)
-    {
-        try {
-            return self::find($ingredient);
-        } catch (\Exception $e) {
-            Log::error("Failed to find ingredient {$ingredient}: " . $e->getMessage());
-            return null;
-        }
+        return false;
     }
 }

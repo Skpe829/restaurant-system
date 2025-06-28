@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'dynamodb'),
+    'default' => env('DB_CONNECTION', 'array'),
 
     /*
     |--------------------------------------------------------------------------
@@ -30,6 +30,10 @@ return [
     */
 
     'connections' => [
+
+        'array' => [
+            'driver' => 'array',
+        ],
 
         // ✅ Configuración DynamoDB para producción
         'dynamodb' => [

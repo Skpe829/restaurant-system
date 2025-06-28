@@ -140,6 +140,27 @@
                       "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/restaurant-warehouse-service-dev*:*:*"
                     }
                   ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:BatchWriteItem"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "InventoryTable",
+                        "Arn"
+                      ]
+                    }
+                  ]
                 }
               ]
             }
@@ -168,7 +189,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-warehouse-service/dev/1751081246356-2025-06-28T03:27:26.356Z/restaurant-warehouse-service.zip"
+          "S3Key": "serverless/restaurant-warehouse-service/dev/1751088045657-2025-06-28T05:20:45.657Z/restaurant-warehouse-service.zip"
         },
         "Handler": "public/index.php",
         "Runtime": "provided.al2",
@@ -188,6 +209,7 @@
             "SESSION_DRIVER": "array",
             "QUEUE_CONNECTION": "sync",
             "LOG_CHANNEL": "stderr",
+            "DYNAMODB_TABLE": "restaurant-inventory-dev",
             "ORDER_SERVICE_URL": "https://hkg61nbow3.execute-api.us-east-1.amazonaws.com"
           }
         },
@@ -212,7 +234,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-warehouse-service/dev/1751081246356-2025-06-28T03:27:26.356Z/restaurant-warehouse-service.zip"
+          "S3Key": "serverless/restaurant-warehouse-service/dev/1751088045657-2025-06-28T05:20:45.657Z/restaurant-warehouse-service.zip"
         },
         "Handler": "artisan",
         "Runtime": "provided.al2",
@@ -225,7 +247,8 @@
             "REGION": "us-east-1",
             "APP_ENV": "production",
             "APP_KEY": "base64:ZYNikPgxfyC/VuJ7XxJBm5rGQdP8qI5nkPMuLvGZThY=",
-            "DB_CONNECTION": "array"
+            "DB_CONNECTION": "array",
+            "DYNAMODB_TABLE": "restaurant-inventory-dev"
           }
         },
         "Role": {
@@ -243,24 +266,24 @@
         "ArtisanLogGroup"
       ]
     },
-    "WebLambdaVersionJb5k4hSIVdoiEA6HMLytH52hHxiH6XMC4heFBlfh0": {
+    "WebLambdaVersionJj9c9zwwCLoeHYYkzrSAHWVRPRru351zQ8sxAryNE": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebLambdaFunction"
         },
-        "CodeSha256": "TZbK3VUx+nmkK/1DnFBYnToz+4nPV6uqJ1tSJaoTwaI="
+        "CodeSha256": "JIGDNNU+JoooZBMS9CPRo+6IU8Bu7sFk2sFBaF+HG90="
       }
     },
-    "ArtisanLambdaVersion47cl5jHs3kUvqtZ58GibMlXODZo8Hc8EY89ed8K8D4": {
+    "ArtisanLambdaVersion0pHNHxacUOgc1Uxt9WJlQPpsyi2cWFpqXxiNzcH8w": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ArtisanLambdaFunction"
         },
-        "CodeSha256": "TZbK3VUx+nmkK/1DnFBYnToz+4nPV6uqJ1tSJaoTwaI="
+        "CodeSha256": "JIGDNNU+JoooZBMS9CPRo+6IU8Bu7sFk2sFBaF+HG90="
       }
     },
     "HttpApi": {
@@ -395,6 +418,29 @@
             "AttributeName": "ingredient",
             "KeyType": "HASH"
           }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "StreamSpecification": {
+          "StreamViewType": "NEW_AND_OLD_IMAGES"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "Service",
+            "Value": "warehouse"
+          },
+          {
+            "Key": "Project",
+            "Value": "restaurant-system"
+          }
         ]
       }
     }
@@ -411,7 +457,7 @@
     "WebLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebLambdaVersionJb5k4hSIVdoiEA6HMLytH52hHxiH6XMC4heFBlfh0"
+        "Ref": "WebLambdaVersionJj9c9zwwCLoeHYYkzrSAHWVRPRru351zQ8sxAryNE"
       },
       "Export": {
         "Name": "sls-restaurant-warehouse-service-dev-WebLambdaFunctionQualifiedArn"
@@ -420,7 +466,7 @@
     "ArtisanLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ArtisanLambdaVersion47cl5jHs3kUvqtZ58GibMlXODZo8Hc8EY89ed8K8D4"
+        "Ref": "ArtisanLambdaVersion0pHNHxacUOgc1Uxt9WJlQPpsyi2cWFpqXxiNzcH8w"
       },
       "Export": {
         "Name": "sls-restaurant-warehouse-service-dev-ArtisanLambdaFunctionQualifiedArn"
@@ -478,6 +524,27 @@
       },
       "Export": {
         "Name": "WarehouseServiceUrl-dev"
+      }
+    },
+    "InventoryTableName": {
+      "Description": "DynamoDB Table Name for Inventory",
+      "Value": {
+        "Ref": "InventoryTable"
+      },
+      "Export": {
+        "Name": "InventoryTableName-dev"
+      }
+    },
+    "InventoryTableArn": {
+      "Description": "DynamoDB Table ARN for Inventory",
+      "Value": {
+        "Fn::GetAtt": [
+          "InventoryTable",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "InventoryTableArn-dev"
       }
     }
   }

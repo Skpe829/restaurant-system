@@ -56,18 +56,16 @@ functions:
       APP_ENV: production
       APP_DEBUG: false
       APP_KEY: base64:ZYNikPgxfyC/VuJ7XxJBm5rGQdP8qI5nkPMuLvGZThY=
-      # ✅ Configuración DynamoDB
-      DB_CONNECTION: dynamodb
+      # ✅ Laravel usa array driver, DynamoDB se maneja con AWS SDK directamente
+      DB_CONNECTION: array
       CACHE_DRIVER: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stderr
-      
-      # ✅ Variables de entorno para DynamoDB
-      AWS_DEFAULT_REGION: ${self:provider.region}
+
+      # ✅ Solo variables personalizadas (AWS proporciona automáticamente las credenciales)
       DYNAMODB_TABLE: restaurant-inventory-${self:provider.stage}
-      DYNAMODB_ENDPOINT: ""  # Vacío para usar el servicio real de AWS
-      
+
       # URLs de otros servicios
       ORDER_SERVICE_URL: ${cf:restaurant-order-service-${self:provider.stage}.OrderServiceUrl}
     events:
@@ -87,11 +85,9 @@ functions:
     environment:
       APP_ENV: production
       APP_KEY: base64:ZYNikPgxfyC/VuJ7XxJBm5rGQdP8qI5nkPMuLvGZThY=
-      # ✅ Configuración DynamoDB para Artisan también
-      DB_CONNECTION: dynamodb
-      AWS_DEFAULT_REGION: ${self:provider.region}
+      # ✅ Configuración simplificada para Artisan
+      DB_CONNECTION: array
       DYNAMODB_TABLE: restaurant-inventory-${self:provider.stage}
-      DYNAMODB_ENDPOINT: ""
 
 resources:
   Resources:
@@ -135,14 +131,14 @@ resources:
             - '.amazonaws.com'
       Export:
         Name: WarehouseServiceUrl-${self:provider.stage}
-    
+
     # ✅ Output adicional para referencia de la tabla
     InventoryTableName:
       Description: "DynamoDB Table Name for Inventory"
       Value: !Ref InventoryTable
       Export:
         Name: InventoryTableName-${self:provider.stage}
-    
+
     InventoryTableArn:
       Description: "DynamoDB Table ARN for Inventory"
       Value: !GetAtt InventoryTable.Arn
