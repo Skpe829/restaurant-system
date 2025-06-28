@@ -1,0 +1,153 @@
+service: restaurant-warehouse-service
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+  # ✅ Permisos IAM para que Lambda pueda acceder a DynamoDB
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:BatchGetItem
+            - dynamodb:BatchWriteItem
+          Resource:
+            - Fn::GetAtt: [InventoryTable, Arn]
+
+custom:
+  httpApi:
+    cors:
+      allowedOrigins:
+        - "http://localhost:3000"
+        - "https://*.vercel.app"
+        - "https://*.netlify.app"
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+
+functions:
+  web:
+    handler: public/index.php
+    timeout: 28
+    memorySize: 512
+    layers:
+      - ${bref:layer.php-82-fpm}
+    environment:
+      BREF_BINARY_RESPONSES: 1
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: base64:ZYNikPgxfyC/VuJ7XxJBm5rGQdP8qI5nkPMuLvGZThY=
+      # ✅ Configuración DynamoDB
+      DB_CONNECTION: dynamodb
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      
+      # ✅ Variables de entorno para DynamoDB
+      AWS_DEFAULT_REGION: ${self:provider.region}
+      DYNAMODB_TABLE: restaurant-inventory-${self:provider.stage}
+      DYNAMODB_ENDPOINT: ""  # Vacío para usar el servicio real de AWS
+      
+      # URLs de otros servicios
+      ORDER_SERVICE_URL: ${cf:restaurant-order-service-${self:provider.stage}.OrderServiceUrl}
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+      - httpApi:
+          path: /
+          method: ANY
+
+  artisan:
+    handler: artisan
+    timeout: 120
+    layers:
+      - ${bref:layer.php-82}
+      - ${bref:layer.console}
+    environment:
+      APP_ENV: production
+      APP_KEY: base64:ZYNikPgxfyC/VuJ7XxJBm5rGQdP8qI5nkPMuLvGZThY=
+      # ✅ Configuración DynamoDB para Artisan también
+      DB_CONNECTION: dynamodb
+      AWS_DEFAULT_REGION: ${self:provider.region}
+      DYNAMODB_TABLE: restaurant-inventory-${self:provider.stage}
+      DYNAMODB_ENDPOINT: ""
+
+resources:
+  Resources:
+    # ✅ Tabla DynamoDB optimizada para producción
+    InventoryTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: restaurant-inventory-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST  # Escala automáticamente
+        AttributeDefinitions:
+          - AttributeName: ingredient
+            AttributeType: S
+        KeySchema:
+          - AttributeName: ingredient
+            KeyType: HASH
+        # ✅ Configuraciones de producción
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true  # Backup automático
+        SSESpecification:
+          SSEEnabled: true  # Encripción en reposo
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES  # Para auditoría y triggers
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+          - Key: Service
+            Value: warehouse
+          - Key: Project
+            Value: restaurant-system
+
+  Outputs:
+    WarehouseServiceUrl:
+      Description: "Warehouse Service API URL"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: HttpApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com'
+      Export:
+        Name: WarehouseServiceUrl-${self:provider.stage}
+    
+    # ✅ Output adicional para referencia de la tabla
+    InventoryTableName:
+      Description: "DynamoDB Table Name for Inventory"
+      Value: !Ref InventoryTable
+      Export:
+        Name: InventoryTableName-${self:provider.stage}
+    
+    InventoryTableArn:
+      Description: "DynamoDB Table ARN for Inventory"
+      Value: !GetAtt InventoryTable.Arn
+      Export:
+        Name: InventoryTableArn-${self:provider.stage}
+
+plugins:
+  - ./vendor/bref/bref
