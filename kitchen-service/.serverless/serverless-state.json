@@ -185,7 +185,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/restaurant-kitchen-service/dev/1751060685548-2025-06-27T21:44:45.548Z/restaurant-kitchen-service.zip"
+                "S3Key": "serverless/restaurant-kitchen-service/dev/1751081171047-2025-06-28T03:26:11.047Z/restaurant-kitchen-service.zip"
               },
               "Handler": "public/index.php",
               "Runtime": "provided.al2",
@@ -229,7 +229,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/restaurant-kitchen-service/dev/1751060685548-2025-06-27T21:44:45.548Z/restaurant-kitchen-service.zip"
+                "S3Key": "serverless/restaurant-kitchen-service/dev/1751081171047-2025-06-28T03:26:11.047Z/restaurant-kitchen-service.zip"
               },
               "Handler": "artisan",
               "Runtime": "provided.al2",
@@ -239,7 +239,10 @@
               "Environment": {
                 "Variables": {
                   "STAGE": "dev",
-                  "REGION": "us-east-1"
+                  "REGION": "us-east-1",
+                  "APP_ENV": "production",
+                  "APP_KEY": "base64:JAbdTqOSzQ3KMOzNZlcACy/rQbyQlnzRy6vEb/APe/8=",
+                  "DB_CONNECTION": "array"
                 }
               },
               "Role": {
@@ -257,24 +260,24 @@
               "ArtisanLogGroup"
             ]
           },
-          "WebLambdaVersionnCx20KABlerIBaHiwPlUc8xcwBhR5eg505BIS44kc": {
+          "WebLambdaVersionUkoYT05oGGvA6KonXmQRVoJWzcNOcfck147xxAvDUk": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "WebLambdaFunction"
               },
-              "CodeSha256": "rx/gzBLjZrusHqqwEfvFylvfuPZET0IPZSw9Td9WGwo="
+              "CodeSha256": "YSP4j0k7FIUWHQUdmP+ktdWLUD1ZFLu0mM9usyO9KZY="
             }
           },
-          "ArtisanLambdaVersion3rgcWeUqVg9elXItwm5qFNk5VX49mmsYWN2xElgd8": {
+          "ArtisanLambdaVersionfw4TRShHCIQwtezP7JURQRGMrEW7ugw3sZtwJRLLA": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ArtisanLambdaFunction"
               },
-              "CodeSha256": "rx/gzBLjZrusHqqwEfvFylvfuPZET0IPZSw9Td9WGwo="
+              "CodeSha256": "YSP4j0k7FIUWHQUdmP+ktdWLUD1ZFLu0mM9usyO9KZY="
             }
           },
           "HttpApi": {
@@ -389,25 +392,6 @@
               }
             },
             "DependsOn": "HttpApiIntegrationWeb"
-          },
-          "RecipesTable": {
-            "Type": "AWS::DynamoDB::Table",
-            "Properties": {
-              "TableName": "restaurant-recipes-dev",
-              "BillingMode": "PAY_PER_REQUEST",
-              "AttributeDefinitions": [
-                {
-                  "AttributeName": "id",
-                  "AttributeType": "S"
-                }
-              ],
-              "KeySchema": [
-                {
-                  "AttributeName": "id",
-                  "KeyType": "HASH"
-                }
-              ]
-            }
           }
         },
         "Outputs": {
@@ -422,7 +406,7 @@
           "WebLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "WebLambdaVersionnCx20KABlerIBaHiwPlUc8xcwBhR5eg505BIS44kc"
+              "Ref": "WebLambdaVersionUkoYT05oGGvA6KonXmQRVoJWzcNOcfck147xxAvDUk"
             },
             "Export": {
               "Name": "sls-restaurant-kitchen-service-dev-WebLambdaFunctionQualifiedArn"
@@ -431,7 +415,7 @@
           "ArtisanLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ArtisanLambdaVersion3rgcWeUqVg9elXItwm5qFNk5VX49mmsYWN2xElgd8"
+              "Ref": "ArtisanLambdaVersionfw4TRShHCIQwtezP7JURQRGMrEW7ugw3sZtwJRLLA"
             },
             "Export": {
               "Name": "sls-restaurant-kitchen-service-dev-ArtisanLambdaFunctionQualifiedArn"
@@ -646,7 +630,7 @@
         "memory": 512,
         "runtime": "provided.al2",
         "vpc": {},
-        "versionLogicalId": "WebLambdaVersionnCx20KABlerIBaHiwPlUc8xcwBhR5eg505BIS44kc"
+        "versionLogicalId": "WebLambdaVersionUkoYT05oGGvA6KonXmQRVoJWzcNOcfck147xxAvDUk"
       },
       "artisan": {
         "handler": "artisan",
@@ -654,37 +638,21 @@
         "layers": {
           "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"ArtisanLambdaFunction\"][\"Properties\"][\"Layers\"]"
         },
+        "environment": {
+          "APP_ENV": "production",
+          "APP_KEY": "base64:JAbdTqOSzQ3KMOzNZlcACy/rQbyQlnzRy6vEb/APe/8=",
+          "DB_CONNECTION": "array"
+        },
         "events": [],
         "name": "restaurant-kitchen-service-dev-artisan",
         "package": {},
         "memory": 1024,
         "runtime": "provided.al2",
         "vpc": {},
-        "versionLogicalId": "ArtisanLambdaVersion3rgcWeUqVg9elXItwm5qFNk5VX49mmsYWN2xElgd8"
+        "versionLogicalId": "ArtisanLambdaVersionfw4TRShHCIQwtezP7JURQRGMrEW7ugw3sZtwJRLLA"
       }
     },
     "resources": {
-      "Resources": {
-        "RecipesTable": {
-          "Type": "AWS::DynamoDB::Table",
-          "Properties": {
-            "TableName": "restaurant-recipes-dev",
-            "BillingMode": "PAY_PER_REQUEST",
-            "AttributeDefinitions": [
-              {
-                "AttributeName": "id",
-                "AttributeType": "S"
-              }
-            ],
-            "KeySchema": [
-              {
-                "AttributeName": "id",
-                "KeyType": "HASH"
-              }
-            ]
-          }
-        }
-      },
       "Outputs": {
         "KitchenServiceUrl": {
           "Description": "Kitchen Service API URL",
@@ -706,7 +674,8 @@
             "Name": "KitchenServiceUrl-dev"
           }
         }
-      }
+      },
+      "Resources": {}
     },
     "configValidationMode": "warn",
     "serviceFilename": "serverless.yml",
@@ -734,7 +703,7 @@
     "artifact": "/Users/mcastillo/personal-workspace/restaurant-system/kitchen-service/.serverless/restaurant-kitchen-service.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/restaurant-kitchen-service/dev/1751060685548-2025-06-27T21:44:45.548Z",
+    "artifactDirectoryName": "serverless/restaurant-kitchen-service/dev/1751081171047-2025-06-28T03:26:11.047Z",
     "artifact": "restaurant-kitchen-service.zip"
   }
 }

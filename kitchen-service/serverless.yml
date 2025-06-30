@@ -44,7 +44,6 @@ functions:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stderr
-      # URL del Order Service
       ORDER_SERVICE_URL: ${cf:restaurant-order-service-${self:provider.stage}.OrderServiceUrl}
     events:
       - httpApi:
@@ -60,21 +59,12 @@ functions:
     layers:
       - ${bref:layer.php-82}
       - ${bref:layer.console}
+    environment:
+      APP_ENV: production
+      APP_KEY: base64:JAbdTqOSzQ3KMOzNZlcACy/rQbyQlnzRy6vEb/APe/8=
+      DB_CONNECTION: array
 
 resources:
-  Resources:
-    RecipesTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: restaurant-recipes-${self:provider.stage}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-
   Outputs:
     KitchenServiceUrl:
       Description: "Kitchen Service API URL"
