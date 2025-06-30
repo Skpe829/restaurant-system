@@ -229,7 +229,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/restaurant-order-service/dev/1751315837096-2025-06-30T20:37:17.096Z/restaurant-order-service.zip"
+                "S3Key": "serverless/restaurant-order-service/dev/1751319276845-2025-06-30T21:34:36.845Z/restaurant-order-service.zip"
               },
               "Handler": "public/index.php",
               "Runtime": "provided.al2",
@@ -276,7 +276,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/restaurant-order-service/dev/1751315837096-2025-06-30T20:37:17.096Z/restaurant-order-service.zip"
+                "S3Key": "serverless/restaurant-order-service/dev/1751319276845-2025-06-30T21:34:36.845Z/restaurant-order-service.zip"
               },
               "Handler": "artisan",
               "Runtime": "provided.al2",
@@ -308,24 +308,24 @@
               "ArtisanLogGroup"
             ]
           },
-          "WebLambdaVersiono49CmLLt4B1BNxn3xCAmHqgzlaCinVVLXIuwVcRDDGA": {
+          "WebLambdaVersion96DgEJGaqdWWveHIaP10lgLdZ2YQQeoVgsUHaPDU": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "WebLambdaFunction"
               },
-              "CodeSha256": "cHm4AnPzya3wrctD4OQvg+I58vFCteTkYJnLC67rvrA="
+              "CodeSha256": "41q7wDpuVaqiOXQVI2z32XqfM1i5cN84mQ5cmAgT/JY="
             }
           },
-          "ArtisanLambdaVersionTKTVxaBHBZGnDMBkYzEaVTev3G7ohL0UF8wJFHTo": {
+          "ArtisanLambdaVersionQ1vJfr7mLa5j92vJheAwndd3mmjjnbiyNHGsVkqnk": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ArtisanLambdaFunction"
               },
-              "CodeSha256": "cHm4AnPzya3wrctD4OQvg+I58vFCteTkYJnLC67rvrA="
+              "CodeSha256": "41q7wDpuVaqiOXQVI2z32XqfM1i5cN84mQ5cmAgT/JY="
             }
           },
           "HttpApi": {
@@ -511,7 +511,7 @@
           "WebLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "WebLambdaVersiono49CmLLt4B1BNxn3xCAmHqgzlaCinVVLXIuwVcRDDGA"
+              "Ref": "WebLambdaVersion96DgEJGaqdWWveHIaP10lgLdZ2YQQeoVgsUHaPDU"
             },
             "Export": {
               "Name": "sls-restaurant-order-service-dev-WebLambdaFunctionQualifiedArn"
@@ -520,7 +520,7 @@
           "ArtisanLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ArtisanLambdaVersionTKTVxaBHBZGnDMBkYzEaVTev3G7ohL0UF8wJFHTo"
+              "Ref": "ArtisanLambdaVersionQ1vJfr7mLa5j92vJheAwndd3mmjjnbiyNHGsVkqnk"
             },
             "Export": {
               "Name": "sls-restaurant-order-service-dev-ArtisanLambdaFunctionQualifiedArn"
@@ -738,7 +738,7 @@
         "memory": 512,
         "runtime": "provided.al2",
         "vpc": {},
-        "versionLogicalId": "WebLambdaVersiono49CmLLt4B1BNxn3xCAmHqgzlaCinVVLXIuwVcRDDGA"
+        "versionLogicalId": "WebLambdaVersion96DgEJGaqdWWveHIaP10lgLdZ2YQQeoVgsUHaPDU"
       },
       "artisan": {
         "handler": "artisan",
@@ -758,7 +758,7 @@
         "memory": 1024,
         "runtime": "provided.al2",
         "vpc": {},
-        "versionLogicalId": "ArtisanLambdaVersionTKTVxaBHBZGnDMBkYzEaVTev3G7ohL0UF8wJFHTo"
+        "versionLogicalId": "ArtisanLambdaVersionQ1vJfr7mLa5j92vJheAwndd3mmjjnbiyNHGsVkqnk"
       }
     },
     "resources": {
@@ -870,7 +870,7 @@
     "artifact": "/Users/mcastillo/personal-workspace/restaurant-system/order-service/.serverless/restaurant-order-service.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/restaurant-order-service/dev/1751315837096-2025-06-30T20:37:17.096Z",
+    "artifactDirectoryName": "serverless/restaurant-order-service/dev/1751319276845-2025-06-30T21:34:36.845Z",
     "artifact": "restaurant-order-service.zip"
   }
 }
