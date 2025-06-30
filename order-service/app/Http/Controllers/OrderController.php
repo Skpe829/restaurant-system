@@ -6,7 +6,6 @@ use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -24,7 +23,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $order,
+                'data' => $order->toArray(),
                 'message' => 'Order created successfully'
             ], 201);
 
@@ -39,11 +38,18 @@ class OrderController extends Controller
     public function index(): JsonResponse
     {
         try {
-            $orders = Order::orderBy('created_at', 'desc')->get();
+            $orders = Order::orderBy('created_at', 'desc');
+
+            // Convertir objetos Order a arrays
+            $ordersData = [];
+            foreach ($orders as $order) {
+                $ordersData[] = $order->toArray();
+            }
 
             return response()->json([
                 'success' => true,
-                'data' => $orders
+                'data' => $ordersData,
+                'total' => count($ordersData)
             ]);
 
         } catch (\Exception $e) {
@@ -61,7 +67,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $order
+                'data' => $order->toArray()
             ]);
 
         } catch (\Exception $e) {
@@ -80,24 +86,36 @@ class OrderController extends Controller
             Order::STATUS_IN_PREPARATION,
             Order::STATUS_READY,
             Order::STATUS_DELIVERED,
-            Order::STATUS_FAILED
+            Order::STATUS_FAILED,
+            Order::STATUS_WAITING_MARKETPLACE
         ];
 
         if (!in_array($status, $validStatuses)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid status'
+                'message' => 'Invalid status. Valid statuses: ' . implode(', ', $validStatuses)
             ], 400);
         }
 
         try {
-            $orders = Order::where('status', $status)
-                          ->orderBy('created_at', 'desc')
-                          ->get();
+            $orders = Order::where('status', $status);
+
+            // Convertir objetos Order a arrays y ordenar
+            $ordersData = [];
+            foreach ($orders as $order) {
+                $ordersData[] = $order->toArray();
+            }
+
+            // Ordenar por created_at desc
+            usort($ordersData, function($a, $b) {
+                return strcmp($b['created_at'], $a['created_at']);
+            });
 
             return response()->json([
                 'success' => true,
-                'data' => $orders
+                'data' => $ordersData,
+                'status' => $status,
+                'total' => count($ordersData)
             ]);
 
         } catch (\Exception $e) {
