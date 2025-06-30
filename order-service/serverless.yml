@@ -44,10 +44,9 @@ functions:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stderr
-      # URLs de otros microservicios (se configurarán después)
-      KITCHEN_SERVICE_URL: ""
-      WAREHOUSE_SERVICE_URL: ""
-      MARKETPLACE_SERVICE_URL: ""
+      KITCHEN_SERVICE_URL: ${cf:restaurant-kitchen-service-${self:provider.stage}.KitchenServiceUrl}
+      WAREHOUSE_SERVICE_URL: ${cf:restaurant-warehouse-service-${self:provider.stage}.WarehouseServiceUrl}
+      MARKETPLACE_SERVICE_URL: ${cf:restaurant-marketplace-service-${self:provider.stage}.MarketplaceServiceUrl}
     events:
       - httpApi:
           path: /{proxy+}
@@ -64,7 +63,7 @@ functions:
       - ${bref:layer.console}
     environment:
       APP_ENV: production
-      APP_KEY: "base64:GENERATE_THIS"
+      APP_KEY: base64:Pxn3KuFjKOybk4GJa/yApPhT2BU4xQj89pnXdxxW7dE=
       DB_CONNECTION: array
 
 resources:
