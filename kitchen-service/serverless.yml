@@ -45,6 +45,7 @@ functions:
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stderr
       ORDER_SERVICE_URL: ${cf:restaurant-order-service-${self:provider.stage}.OrderServiceUrl}
+      WAREHOUSE_SERVICE_URL: ${cf:restaurant-warehouse-service-${self:provider.stage}.WarehouseServiceUrl}
     events:
       - httpApi:
           path: /{proxy+}

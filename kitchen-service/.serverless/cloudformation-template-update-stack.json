@@ -168,7 +168,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-kitchen-service/dev/1751081171047-2025-06-28T03:26:11.047Z/restaurant-kitchen-service.zip"
+          "S3Key": "serverless/restaurant-kitchen-service/dev/1751317776585-2025-06-30T21:09:36.585Z/restaurant-kitchen-service.zip"
         },
         "Handler": "public/index.php",
         "Runtime": "provided.al2",
@@ -188,7 +188,8 @@
             "SESSION_DRIVER": "array",
             "QUEUE_CONNECTION": "sync",
             "LOG_CHANNEL": "stderr",
-            "ORDER_SERVICE_URL": "https://hkg61nbow3.execute-api.us-east-1.amazonaws.com"
+            "ORDER_SERVICE_URL": "https://hkg61nbow3.execute-api.us-east-1.amazonaws.com",
+            "WAREHOUSE_SERVICE_URL": "https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com"
           }
         },
         "Role": {
@@ -212,7 +213,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-kitchen-service/dev/1751081171047-2025-06-28T03:26:11.047Z/restaurant-kitchen-service.zip"
+          "S3Key": "serverless/restaurant-kitchen-service/dev/1751317776585-2025-06-30T21:09:36.585Z/restaurant-kitchen-service.zip"
         },
         "Handler": "artisan",
         "Runtime": "provided.al2",
@@ -243,24 +244,24 @@
         "ArtisanLogGroup"
       ]
     },
-    "WebLambdaVersionUkoYT05oGGvA6KonXmQRVoJWzcNOcfck147xxAvDUk": {
+    "WebLambdaVersionVLAPlgD1XDzDLKfPUHuBtYLtO46E26KKYZN4zYuzWs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebLambdaFunction"
         },
-        "CodeSha256": "YSP4j0k7FIUWHQUdmP+ktdWLUD1ZFLu0mM9usyO9KZY="
+        "CodeSha256": "Z8k5hx8KVIgFCoHnqAkrn2vwtha4enQYJjvyMc6clBA="
       }
     },
-    "ArtisanLambdaVersionfw4TRShHCIQwtezP7JURQRGMrEW7ugw3sZtwJRLLA": {
+    "ArtisanLambdaVersionbgk6UydEx7zkKC5ZlwcNyIxUlJ10jDQw6MUSIrQmGA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ArtisanLambdaFunction"
         },
-        "CodeSha256": "YSP4j0k7FIUWHQUdmP+ktdWLUD1ZFLu0mM9usyO9KZY="
+        "CodeSha256": "Z8k5hx8KVIgFCoHnqAkrn2vwtha4enQYJjvyMc6clBA="
       }
     },
     "HttpApi": {
@@ -392,7 +393,7 @@
     "WebLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebLambdaVersionUkoYT05oGGvA6KonXmQRVoJWzcNOcfck147xxAvDUk"
+        "Ref": "WebLambdaVersionVLAPlgD1XDzDLKfPUHuBtYLtO46E26KKYZN4zYuzWs"
       },
       "Export": {
         "Name": "sls-restaurant-kitchen-service-dev-WebLambdaFunctionQualifiedArn"
@@ -401,7 +402,7 @@
     "ArtisanLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ArtisanLambdaVersionfw4TRShHCIQwtezP7JURQRGMrEW7ugw3sZtwJRLLA"
+        "Ref": "ArtisanLambdaVersionbgk6UydEx7zkKC5ZlwcNyIxUlJ10jDQw6MUSIrQmGA"
       },
       "Export": {
         "Name": "sls-restaurant-kitchen-service-dev-ArtisanLambdaFunctionQualifiedArn"
