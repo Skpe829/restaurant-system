@@ -168,7 +168,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-kitchen-service/dev/1751317776585-2025-06-30T21:09:36.585Z/restaurant-kitchen-service.zip"
+          "S3Key": "serverless/restaurant-kitchen-service/dev/1751319533612-2025-06-30T21:38:53.612Z/restaurant-kitchen-service.zip"
         },
         "Handler": "public/index.php",
         "Runtime": "provided.al2",
@@ -213,7 +213,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-kitchen-service/dev/1751317776585-2025-06-30T21:09:36.585Z/restaurant-kitchen-service.zip"
+          "S3Key": "serverless/restaurant-kitchen-service/dev/1751319533612-2025-06-30T21:38:53.612Z/restaurant-kitchen-service.zip"
         },
         "Handler": "artisan",
         "Runtime": "provided.al2",
