@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Inventory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 
 class WarehouseService
 {
@@ -54,7 +53,7 @@ class WarehouseService
         $available = [];
 
         foreach ($requiredIngredients as $ingredient => $requiredAmount) {
-            $inventory = Inventory::where('ingredient', $ingredient)->first();
+            $inventory = Inventory::findByIngredient($ingredient);
 
             if (!$inventory) {
                 $sufficient = false;
@@ -81,70 +80,87 @@ class WarehouseService
 
     public function reserveIngredients(array $ingredients): bool
     {
-        return DB::transaction(function () use ($ingredients) {
-            foreach ($ingredients as $ingredient => $amount) {
-                $inventory = Inventory::where('ingredient', $ingredient)->first();
+        $reservedIngredients = [];
 
-                if (!$inventory || !$inventory->reserve($amount)) {
+        try {
+            foreach ($ingredients as $ingredient => $amount) {
+                $inventory = Inventory::findByIngredient($ingredient);
+
+                if (!$inventory) {
+                    throw new \Exception("Ingredient not found: {$ingredient}");
+                }
+
+                if (!$inventory->reserve($amount)) {
                     throw new \Exception("Failed to reserve {$amount} units of {$ingredient}");
                 }
+
+                $reservedIngredients[] = ['ingredient' => $ingredient, 'amount' => $amount];
             }
 
             return true;
-        });
+
+        } catch (\Exception $e) {
+            // Rollback reservations if something failed
+            Log::error("Failed to reserve ingredients, attempting rollback: " . $e->getMessage());
+
+            foreach ($reservedIngredients as $reserved) {
+                try {
+                    $inventory = Inventory::findByIngredient($reserved['ingredient']);
+                    if ($inventory) {
+                        // Revert reservation by reducing reserved_quantity
+                        $inventory->reserved_quantity -= $reserved['amount'];
+                        $inventory->save();
+                    }
+                } catch (\Exception $rollbackException) {
+                    Log::error("Rollback failed for {$reserved['ingredient']}: " . $rollbackException->getMessage());
+                }
+            }
+
+            throw $e;
+        }
     }
 
     public function consumeIngredients(array $ingredients): bool
     {
-        return DB::transaction(function () use ($ingredients) {
-            foreach ($ingredients as $ingredient => $amount) {
-                $inventory = Inventory::where('ingredient', $ingredient)->first();
+        foreach ($ingredients as $ingredient => $amount) {
+            $inventory = Inventory::findByIngredient($ingredient);
 
-                if (!$inventory || !$inventory->consume($amount)) {
-                    throw new \Exception("Failed to consume {$amount} units of {$ingredient}");
-                }
+            if (!$inventory || !$inventory->consume($amount)) {
+                throw new \Exception("Failed to consume {$amount} units of {$ingredient}");
             }
+        }
 
-            return true;
-        });
+        return true;
     }
 
     public function addStock(array $ingredients): bool
     {
-        return DB::transaction(function () use ($ingredients) {
-            foreach ($ingredients as $ingredient => $amount) {
-                $inventory = Inventory::where('ingredient', $ingredient)->first();
+        foreach ($ingredients as $ingredient => $amount) {
+            $inventory = Inventory::findByIngredient($ingredient);
 
-                if ($inventory) {
-                    $inventory->addStock($amount);
-                } else {
-                    // Create new inventory item
-                    Inventory::create([
-                        'ingredient' => $ingredient,
-                        'quantity' => $amount,
-                        'reserved_quantity' => 0,
-                        'unit' => 'kg', // Default unit
-                        'last_updated' => now()
-                    ]);
+            if ($inventory) {
+                $inventory->addStock($amount);
+            } else {
+                // Create new inventory item
+                $newInventory = new Inventory([
+                    'ingredient' => $ingredient,
+                    'quantity' => $amount,
+                    'reserved_quantity' => 0,
+                    'unit' => 'kg', // Default unit
+                ]);
+
+                if (!$newInventory->save()) {
+                    throw new \Exception("Failed to create new inventory item for {$ingredient}");
                 }
             }
+        }
 
-            return true;
-        });
+        return true;
     }
 
     public function getCurrentInventory(): array
     {
-        return Inventory::all()->map(function ($item) {
-            return [
-                'ingredient' => $item->ingredient,
-                'total_quantity' => $item->quantity,
-                'available_quantity' => $item->getAvailableQuantity(),
-                'reserved_quantity' => $item->reserved_quantity,
-                'unit' => $item->unit,
-                'last_updated' => $item->last_updated
-            ];
-        })->toArray();
+        return Inventory::getAllInventory();
     }
 
     private function notifyOrderService(string $orderId, string $status, array $missingIngredients): void
@@ -168,7 +184,8 @@ class WarehouseService
             } else {
                 Log::error("Warehouse: Failed to notify order service", [
                     'order_id' => $orderId,
-                    'status' => $response->status()
+                    'status' => $response->status(),
+                    'response' => $response->body()
                 ]);
             }
 
