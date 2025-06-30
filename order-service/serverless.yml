@@ -9,6 +9,26 @@ provider:
   environment:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
+  # ✅ AÑADIR: Permisos IAM para DynamoDB
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:BatchGetItem
+            - dynamodb:BatchWriteItem
+          Resource:
+            - Fn::GetAtt: [OrdersTable, Arn]
+            - Fn::Join:
+                - '/'
+                - - Fn::GetAtt: [OrdersTable, Arn]
+                  - 'index/*'
 
 custom:
   httpApi:
@@ -44,6 +64,11 @@ functions:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stderr
+
+      # ✅ AÑADIR: Variable para tabla DynamoDB
+      DYNAMODB_TABLE: restaurant-orders-${self:provider.stage}
+
+      # URLs de otros servicios
       KITCHEN_SERVICE_URL: ${cf:restaurant-kitchen-service-${self:provider.stage}.KitchenServiceUrl}
       WAREHOUSE_SERVICE_URL: ${cf:restaurant-warehouse-service-${self:provider.stage}.WarehouseServiceUrl}
       MARKETPLACE_SERVICE_URL: ${cf:restaurant-marketplace-service-${self:provider.stage}.MarketplaceServiceUrl}
@@ -65,6 +90,8 @@ functions:
       APP_ENV: production
       APP_KEY: base64:Pxn3KuFjKOybk4GJa/yApPhT2BU4xQj89pnXdxxW7dE=
       DB_CONNECTION: array
+      # ✅ AÑADIR: Variable para Artisan
+      DYNAMODB_TABLE: restaurant-orders-${self:provider.stage}
 
 resources:
   Resources:
@@ -88,6 +115,18 @@ resources:
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
+        # ✅ AÑADIR: Configuraciones de producción
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        SSESpecification:
+          SSEEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+          - Key: Service
+            Value: order
+          - Key: Project
+            Value: restaurant-system
 
   Outputs:
     OrderServiceUrl:

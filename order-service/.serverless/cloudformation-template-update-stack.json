@@ -140,6 +140,41 @@
                       "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/restaurant-order-service-dev*:*:*"
                     }
                   ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:BatchWriteItem"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "OrdersTable",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "/",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "OrdersTable",
+                              "Arn"
+                            ]
+                          },
+                          "index/*"
+                        ]
+                      ]
+                    }
+                  ]
                 }
               ]
             }
@@ -168,7 +203,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-order-service/dev/1751057263724-2025-06-27T20:47:43.724Z/restaurant-order-service.zip"
+          "S3Key": "serverless/restaurant-order-service/dev/1751315837096-2025-06-30T20:37:17.096Z/restaurant-order-service.zip"
         },
         "Handler": "public/index.php",
         "Runtime": "provided.al2",
@@ -188,9 +223,10 @@
             "SESSION_DRIVER": "array",
             "QUEUE_CONNECTION": "sync",
             "LOG_CHANNEL": "stderr",
-            "KITCHEN_SERVICE_URL": "",
-            "WAREHOUSE_SERVICE_URL": "",
-            "MARKETPLACE_SERVICE_URL": ""
+            "DYNAMODB_TABLE": "restaurant-orders-dev",
+            "KITCHEN_SERVICE_URL": "https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com",
+            "WAREHOUSE_SERVICE_URL": "https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com",
+            "MARKETPLACE_SERVICE_URL": "https://jf2tdrrs58.execute-api.us-east-1.amazonaws.com"
           }
         },
         "Role": {
@@ -214,7 +250,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-order-service/dev/1751057263724-2025-06-27T20:47:43.724Z/restaurant-order-service.zip"
+          "S3Key": "serverless/restaurant-order-service/dev/1751315837096-2025-06-30T20:37:17.096Z/restaurant-order-service.zip"
         },
         "Handler": "artisan",
         "Runtime": "provided.al2",
@@ -226,8 +262,9 @@
             "STAGE": "dev",
             "REGION": "us-east-1",
             "APP_ENV": "production",
-            "APP_KEY": "base64:GENERATE_THIS",
-            "DB_CONNECTION": "array"
+            "APP_KEY": "base64:Pxn3KuFjKOybk4GJa/yApPhT2BU4xQj89pnXdxxW7dE=",
+            "DB_CONNECTION": "array",
+            "DYNAMODB_TABLE": "restaurant-orders-dev"
           }
         },
         "Role": {
@@ -245,24 +282,24 @@
         "ArtisanLogGroup"
       ]
     },
-    "WebLambdaVersione5ha7vqjJ5PgkjnH8jW9Nus9COdN8VwlOLdTwLTs": {
+    "WebLambdaVersiono49CmLLt4B1BNxn3xCAmHqgzlaCinVVLXIuwVcRDDGA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebLambdaFunction"
         },
-        "CodeSha256": "duohtEo0Ax2ZZBvWM3lMI/iRyhyO0AAS5HQ+DEHfeiU="
+        "CodeSha256": "cHm4AnPzya3wrctD4OQvg+I58vFCteTkYJnLC67rvrA="
       }
     },
-    "ArtisanLambdaVersionN7ORfqFE118H7J94o1PSlcGiPda3MzMLVXxKvIyvM": {
+    "ArtisanLambdaVersionTKTVxaBHBZGnDMBkYzEaVTev3G7ohL0UF8wJFHTo": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ArtisanLambdaFunction"
         },
-        "CodeSha256": "duohtEo0Ax2ZZBvWM3lMI/iRyhyO0AAS5HQ+DEHfeiU="
+        "CodeSha256": "cHm4AnPzya3wrctD4OQvg+I58vFCteTkYJnLC67rvrA="
       }
     },
     "HttpApi": {
@@ -415,6 +452,26 @@
               "ProjectionType": "ALL"
             }
           }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "Service",
+            "Value": "order"
+          },
+          {
+            "Key": "Project",
+            "Value": "restaurant-system"
+          }
         ]
       }
     }
@@ -431,7 +488,7 @@
     "WebLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebLambdaVersione5ha7vqjJ5PgkjnH8jW9Nus9COdN8VwlOLdTwLTs"
+        "Ref": "WebLambdaVersiono49CmLLt4B1BNxn3xCAmHqgzlaCinVVLXIuwVcRDDGA"
       },
       "Export": {
         "Name": "sls-restaurant-order-service-dev-WebLambdaFunctionQualifiedArn"
@@ -440,7 +497,7 @@
     "ArtisanLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ArtisanLambdaVersionN7ORfqFE118H7J94o1PSlcGiPda3MzMLVXxKvIyvM"
+        "Ref": "ArtisanLambdaVersionTKTVxaBHBZGnDMBkYzEaVTev3G7ohL0UF8wJFHTo"
       },
       "Export": {
         "Name": "sls-restaurant-order-service-dev-ArtisanLambdaFunctionQualifiedArn"
