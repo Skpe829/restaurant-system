@@ -215,7 +215,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/restaurant-warehouse-service/dev/1751318480385-2025-06-30T21:21:20.385Z/restaurant-warehouse-service.zip"
+                "S3Key": "serverless/restaurant-warehouse-service/dev/1751319536533-2025-06-30T21:38:56.533Z/restaurant-warehouse-service.zip"
               },
               "Handler": "public/index.php",
               "Runtime": "provided.al2",
@@ -260,7 +260,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/restaurant-warehouse-service/dev/1751318480385-2025-06-30T21:21:20.385Z/restaurant-warehouse-service.zip"
+                "S3Key": "serverless/restaurant-warehouse-service/dev/1751319536533-2025-06-30T21:38:56.533Z/restaurant-warehouse-service.zip"
               },
               "Handler": "artisan",
               "Runtime": "provided.al2",
@@ -292,24 +292,24 @@
               "ArtisanLogGroup"
             ]
           },
-          "WebLambdaVersionghoq1ZEC9rSul28JswKJPoSZ7uPWKQac8chJMcOXq4": {
+          "WebLambdaVersiondC3N3UutqYNKtCa8cBU1iTIHm1JZmdXqV6p4IBkpI": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "WebLambdaFunction"
               },
-              "CodeSha256": "lNJcEmEVU56S6aKf1qNpxx+lNxCPUzinI6yp8XdjISk="
+              "CodeSha256": "2HtCH48aJ/Qf/QWerguazSnRuIP+P3FhqYqbLMM25hE="
             }
           },
-          "ArtisanLambdaVersion5KiWEWtbiyGgk0lQeTzSlwDteuZJ1ZH9juLhSMlJROw": {
+          "ArtisanLambdaVersionkEqRj6mjq7BpZAmD6DjZbzOUt2sDRj02r1rnODpaCI": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ArtisanLambdaFunction"
               },
-              "CodeSha256": "lNJcEmEVU56S6aKf1qNpxx+lNxCPUzinI6yp8XdjISk="
+              "CodeSha256": "2HtCH48aJ/Qf/QWerguazSnRuIP+P3FhqYqbLMM25hE="
             }
           },
           "HttpApi": {
@@ -480,7 +480,7 @@
           "WebLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "WebLambdaVersionghoq1ZEC9rSul28JswKJPoSZ7uPWKQac8chJMcOXq4"
+              "Ref": "WebLambdaVersiondC3N3UutqYNKtCa8cBU1iTIHm1JZmdXqV6p4IBkpI"
             },
             "Export": {
               "Name": "sls-restaurant-warehouse-service-dev-WebLambdaFunctionQualifiedArn"
@@ -489,7 +489,7 @@
           "ArtisanLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ArtisanLambdaVersion5KiWEWtbiyGgk0lQeTzSlwDteuZJ1ZH9juLhSMlJROw"
+              "Ref": "ArtisanLambdaVersionkEqRj6mjq7BpZAmD6DjZbzOUt2sDRj02r1rnODpaCI"
             },
             "Export": {
               "Name": "sls-restaurant-warehouse-service-dev-ArtisanLambdaFunctionQualifiedArn"
@@ -727,7 +727,7 @@
         "memory": 512,
         "runtime": "provided.al2",
         "vpc": {},
-        "versionLogicalId": "WebLambdaVersionghoq1ZEC9rSul28JswKJPoSZ7uPWKQac8chJMcOXq4"
+        "versionLogicalId": "WebLambdaVersiondC3N3UutqYNKtCa8cBU1iTIHm1JZmdXqV6p4IBkpI"
       },
       "artisan": {
         "handler": "artisan",
@@ -747,7 +747,7 @@
         "memory": 1024,
         "runtime": "provided.al2",
         "vpc": {},
-        "versionLogicalId": "ArtisanLambdaVersion5KiWEWtbiyGgk0lQeTzSlwDteuZJ1ZH9juLhSMlJROw"
+        "versionLogicalId": "ArtisanLambdaVersionkEqRj6mjq7BpZAmD6DjZbzOUt2sDRj02r1rnODpaCI"
       }
     },
     "resources": {
@@ -865,7 +865,7 @@
     "artifact": "/Users/mcastillo/personal-workspace/restaurant-system/warehouse-service/.serverless/restaurant-warehouse-service.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/restaurant-warehouse-service/dev/1751318480385-2025-06-30T21:21:20.385Z",
+    "artifactDirectoryName": "serverless/restaurant-warehouse-service/dev/1751319536533-2025-06-30T21:38:56.533Z",
     "artifact": "restaurant-warehouse-service.zip"
   }
 }
