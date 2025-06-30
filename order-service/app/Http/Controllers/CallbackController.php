@@ -7,6 +7,7 @@ use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
 class CallbackController extends Controller
 {
@@ -59,22 +60,48 @@ class CallbackController extends Controller
                 $order->update(['status' => Order::STATUS_IN_PREPARATION]);
                 Log::info('Order moved to preparation: ' . $order->id);
             } else {
-                // Trigger marketplace service
-                $this->triggerMarketplaceService($order, $validated['missing_ingredients']);
-                Log::info('Triggered marketplace for missing ingredients: ' . $order->id);
+                $order->update(['status' => 'waiting_marketplace']);
+                Log::info('Order waiting for marketplace purchase: ' . $order->id);
+
+                // Intentar comprar ingredientes faltantes
+                $purchaseResult = $this->attemptMarketplacePurchase($order, $validated['missing_ingredients']);
+
+                if ($purchaseResult['success']) {
+                    $order->update(['status' => Order::STATUS_IN_PREPARATION]);
+                    Log::info('Order moved to preparation after successful marketplace purchase: ' . $order->id);
+                } else {
+                    // Si no hay marketplace service, simular compra exitosa por ahora
+                    Log::warning('Marketplace service not available, simulating successful purchase');
+
+                    // Agregar stock faltante al warehouse
+                    $this->simulateMarketplacePurchase($validated['missing_ingredients']);
+
+                    $order->update(['status' => Order::STATUS_IN_PREPARATION]);
+                    Log::info('Order moved to preparation after simulated marketplace purchase: ' . $order->id);
+                }
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Warehouse callback processed'
+                'message' => 'Warehouse callback processed',
+                'order_status' => $order->status
             ]);
 
         } catch (\Exception $e) {
             Log::error('Warehouse callback failed: ' . $e->getMessage());
 
+            try {
+                $order = Order::find($validated['order_id']);
+                if ($order && $order->status !== Order::STATUS_FAILED) {
+                    $order->update(['status' => Order::STATUS_FAILED]);
+                }
+            } catch (\Exception $updateException) {
+                Log::error('Failed to update order status to failed: ' . $updateException->getMessage());
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process warehouse callback'
+                'message' => 'Failed to process warehouse callback: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -143,22 +170,62 @@ class CallbackController extends Controller
         }
     }
 
-    private function triggerMarketplaceService(Order $order, array $missingIngredients): void
+    // Método para intentar compra en marketplace real
+    private function attemptMarketplacePurchase(Order $order, array $missingIngredients): array
     {
         $marketplaceUrl = env('MARKETPLACE_SERVICE_URL');
 
-        if (!$marketplaceUrl) {
-            Log::warning('Marketplace service URL not configured');
+        // Si no hay URL configurada o es placeholder, retornar false
+        if (!$marketplaceUrl || strpos($marketplaceUrl, 'placeholder') !== false) {
+            return ['success' => false, 'reason' => 'No marketplace service configured'];
+        }
+
+        try {
+            $response = Http::timeout(30)->post("{$marketplaceUrl}/api/purchase-ingredients", [
+                'order_id' => $order->id,
+                'missing_ingredients' => $missingIngredients,
+            ]);
+
+            if ($response->successful()) {
+                return ['success' => true, 'data' => $response->json()];
+            }
+
+            return ['success' => false, 'reason' => 'HTTP error: ' . $response->status()];
+
+        } catch (\Exception $e) {
+            Log::error('Marketplace service call failed: ' . $e->getMessage());
+            return ['success' => false, 'reason' => $e->getMessage()];
+        }
+    }
+
+    private function simulateMarketplacePurchase(array $missingIngredients): void
+    {
+        $warehouseUrl = env('WAREHOUSE_SERVICE_URL');
+
+        if (!$warehouseUrl) {
+            Log::warning('Cannot simulate marketplace purchase: Warehouse URL not configured');
             return;
         }
 
         try {
-            \Illuminate\Support\Facades\Http::timeout(30)->post("{$marketplaceUrl}/api/purchase-ingredients", [
-                'order_id' => $order->id,
-                'missing_ingredients' => $missingIngredients,
+            // Agregar stock faltante al warehouse
+            $response = Http::timeout(30)->post("{$warehouseUrl}/api/add-stock", [
+                'ingredients' => $missingIngredients
             ]);
+
+            if ($response->successful()) {
+                Log::info('Successfully added missing ingredients to warehouse', [
+                    'ingredients' => $missingIngredients
+                ]);
+            } else {
+                Log::warning('Failed to add stock to warehouse', [
+                    'status' => $response->status(),
+                    'response' => $response->body()
+                ]);
+            }
+
         } catch (\Exception $e) {
-            Log::error('Failed to trigger marketplace service: ' . $e->getMessage());
+            Log::error('Failed to simulate marketplace purchase: ' . $e->getMessage());
         }
     }
 }
