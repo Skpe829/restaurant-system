@@ -44,8 +44,10 @@ functions:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       LOG_CHANNEL: stderr
-      ORDER_SERVICE_URL: ${cf:restaurant-order-service-${self:provider.stage}.OrderServiceUrl}
-      WAREHOUSE_SERVICE_URL: ${cf:restaurant-warehouse-service-${self:provider.stage}.WarehouseServiceUrl}
+      ORDER_SERVICE_URL: https://hkg61nbow3.execute-api.us-east-1.amazonaws.com
+      KITCHEN_SERVICE_URL: https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com
+      WAREHOUSE_SERVICE_URL: https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com
+      MARKETPLACE_SERVICE_URL: https://3euu6m4xs6.execute-api.us-east-1.amazonaws.com
     events:
       - httpApi:
           path: /{proxy+}
