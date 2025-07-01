@@ -140,6 +140,39 @@
                       "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/restaurant-marketplace-service-dev*:*:*"
                     }
                   ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "PurchaseHistoryTable",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "/",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "PurchaseHistoryTable",
+                              "Arn"
+                            ]
+                          },
+                          "index/*"
+                        ]
+                      ]
+                    }
+                  ]
                 }
               ]
             }
@@ -168,13 +201,13 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-marketplace-service/dev/1751319543137-2025-06-30T21:39:03.137Z/restaurant-marketplace-service.zip"
+          "S3Key": "serverless/restaurant-marketplace-service/dev/1751349175615-2025-07-01T05:52:55.615Z/restaurant-marketplace-service.zip"
         },
         "Handler": "public/index.php",
         "Runtime": "provided.al2",
         "FunctionName": "restaurant-marketplace-service-dev-web",
-        "MemorySize": 512,
-        "Timeout": 28,
+        "MemorySize": 1024,
+        "Timeout": 60,
         "Environment": {
           "Variables": {
             "STAGE": "dev",
@@ -184,12 +217,15 @@
             "APP_DEBUG": "false",
             "APP_KEY": "base64:alV9TLgsKZ+PSgRqizZLs8xEElTVVEvHj6wNK4hWu/M=",
             "DB_CONNECTION": "array",
+            "DYNAMODB_TABLE": "restaurant-purchases-dev",
             "CACHE_DRIVER": "array",
             "SESSION_DRIVER": "array",
             "QUEUE_CONNECTION": "sync",
             "LOG_CHANNEL": "stderr",
             "ORDER_SERVICE_URL": "https://hkg61nbow3.execute-api.us-east-1.amazonaws.com",
+            "KITCHEN_SERVICE_URL": "https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com",
             "WAREHOUSE_SERVICE_URL": "https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com",
+            "MARKETPLACE_SERVICE_URL": "https://3euu6m4xs6.execute-api.us-east-1.amazonaws.com",
             "FARMERS_MARKET_API": "https://recruitment.alegra.com/api/farmers-market/buy"
           }
         },
@@ -214,7 +250,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/restaurant-marketplace-service/dev/1751319543137-2025-06-30T21:39:03.137Z/restaurant-marketplace-service.zip"
+          "S3Key": "serverless/restaurant-marketplace-service/dev/1751349175615-2025-07-01T05:52:55.615Z/restaurant-marketplace-service.zip"
         },
         "Handler": "artisan",
         "Runtime": "provided.al2",
@@ -227,7 +263,8 @@
             "REGION": "us-east-1",
             "APP_ENV": "production",
             "APP_KEY": "base64:alV9TLgsKZ+PSgRqizZLs8xEElTVVEvHj6wNK4hWu/M=",
-            "DB_CONNECTION": "array"
+            "DB_CONNECTION": "array",
+            "DYNAMODB_TABLE": "restaurant-purchases-dev"
           }
         },
         "Role": {
@@ -245,24 +282,24 @@
         "ArtisanLogGroup"
       ]
     },
-    "WebLambdaVersionZzCj0jIGWub7ic5aJZXyMISbocgOMWeNVfh2CUg": {
+    "WebLambdaVersionnvwtAjSMTljITNS029i9qRymP0wX8VQZTHZ9QBb0GNo": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebLambdaFunction"
         },
-        "CodeSha256": "WAe3fCJXuNHaHxtauNk4EuwH5Nd2IV6nqfocvniJex4="
+        "CodeSha256": "4tYcsPch+2fxL2+seJMGMLiXmVK6J6ClvRQrbniBsrY="
       }
     },
-    "ArtisanLambdaVersionbLDsiTxmrAV4aE8oumKTdPpDln5vgJaC66VNbKg04": {
+    "ArtisanLambdaVersionG2kqfvPLgiInnFoFDmNNxPTaHfmby8mGlvpCeDKWCOs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ArtisanLambdaFunction"
         },
-        "CodeSha256": "WAe3fCJXuNHaHxtauNk4EuwH5Nd2IV6nqfocvniJex4="
+        "CodeSha256": "4tYcsPch+2fxL2+seJMGMLiXmVK6J6ClvRQrbniBsrY="
       }
     },
     "HttpApi": {
@@ -404,7 +441,7 @@
         ],
         "GlobalSecondaryIndexes": [
           {
-            "IndexName": "order-index",
+            "IndexName": "order-lookup-gsi",
             "KeySchema": [
               {
                 "AttributeName": "order_id",
@@ -415,7 +452,10 @@
               "ProjectionType": "ALL"
             }
           }
-        ]
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": false
+        }
       }
     }
   },
@@ -431,7 +471,7 @@
     "WebLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebLambdaVersionZzCj0jIGWub7ic5aJZXyMISbocgOMWeNVfh2CUg"
+        "Ref": "WebLambdaVersionnvwtAjSMTljITNS029i9qRymP0wX8VQZTHZ9QBb0GNo"
       },
       "Export": {
         "Name": "sls-restaurant-marketplace-service-dev-WebLambdaFunctionQualifiedArn"
@@ -440,7 +480,7 @@
     "ArtisanLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ArtisanLambdaVersionbLDsiTxmrAV4aE8oumKTdPpDln5vgJaC66VNbKg04"
+        "Ref": "ArtisanLambdaVersionG2kqfvPLgiInnFoFDmNNxPTaHfmby8mGlvpCeDKWCOs"
       },
       "Export": {
         "Name": "sls-restaurant-marketplace-service-dev-ArtisanLambdaFunctionQualifiedArn"
