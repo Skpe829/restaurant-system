@@ -1,0 +1,35 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.backup
+.env.production
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Serverless Framework
+**/.serverless/
+
+# Node modules
+**/node_modules/
+
+# PHP vendor
+**/vendor/
+
+# Logs
+*.log
+**/*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Service URLs (these contain deployment-specific URLs)
+service-urls-*.txt 

@@ -87,7 +87,8 @@ class OrderController extends Controller
             Order::STATUS_READY,
             Order::STATUS_DELIVERED,
             Order::STATUS_FAILED,
-            Order::STATUS_WAITING_MARKETPLACE
+            Order::STATUS_WAITING_MARKETPLACE,
+            Order::STATUS_FAILED_UNAVAILABLE_INGREDIENTS
         ];
 
         if (!in_array($status, $validStatuses)) {

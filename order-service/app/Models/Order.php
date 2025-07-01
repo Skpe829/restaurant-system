@@ -20,6 +20,7 @@ class Order
     public const STATUS_DELIVERED = 'delivered';
     public const STATUS_FAILED = 'failed';
     public const STATUS_WAITING_MARKETPLACE = 'waiting_marketplace';
+    public const STATUS_FAILED_UNAVAILABLE_INGREDIENTS = 'failed_unavailable_ingredients';
 
     // Propiedades del modelo
     public $id;

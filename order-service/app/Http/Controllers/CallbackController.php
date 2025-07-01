@@ -49,42 +49,37 @@ class CallbackController extends Controller
     {
         $validated = $request->validate([
             'order_id' => 'required|string',
-            'inventory_status' => 'required|string|in:sufficient,insufficient',
+            'inventory_status' => 'required|string|in:sufficient,insufficient,waiting_marketplace,failed_unavailable_ingredients',
+            'order_status' => 'nullable|string|in:in_preparation,waiting_marketplace,failed_unavailable_ingredients,failed',
             'missing_ingredients' => 'nullable|array',
         ]);
 
         try {
             $order = Order::findOrFail($validated['order_id']);
 
-            if ($validated['inventory_status'] === 'sufficient') {
-                $order->update(['status' => Order::STATUS_IN_PREPARATION]);
-                Log::info('Order moved to preparation: ' . $order->id);
-            } else {
-                $order->update(['status' => 'waiting_marketplace']);
-                Log::info('Order waiting for marketplace purchase: ' . $order->id);
+            // Use the order_status provided by warehouse if available, otherwise map from inventory_status
+            $newStatus = $validated['order_status'] ?? $this->mapInventoryStatusToOrderStatus($validated['inventory_status']);
 
-                // Intentar comprar ingredientes faltantes
-                $purchaseResult = $this->attemptMarketplacePurchase($order, $validated['missing_ingredients']);
+            $order->update(['status' => $newStatus]);
 
-                if ($purchaseResult['success']) {
-                    $order->update(['status' => Order::STATUS_IN_PREPARATION]);
-                    Log::info('Order moved to preparation after successful marketplace purchase: ' . $order->id);
-                } else {
-                    // Si no hay marketplace service, simular compra exitosa por ahora
-                    Log::warning('Marketplace service not available, simulating successful purchase');
+            $statusMessages = [
+                Order::STATUS_IN_PREPARATION => "Order {$order->id} moved to preparation - all ingredients available",
+                Order::STATUS_WAITING_MARKETPLACE => "Order {$order->id} waiting for marketplace purchase",
+                Order::STATUS_FAILED_UNAVAILABLE_INGREDIENTS => "Order {$order->id} failed - ingredients not available in marketplace",
+                Order::STATUS_FAILED => "Order {$order->id} failed due to warehouse error"
+            ];
 
-                    // Agregar stock faltante al warehouse
-                    $this->simulateMarketplacePurchase($validated['missing_ingredients']);
-
-                    $order->update(['status' => Order::STATUS_IN_PREPARATION]);
-                    Log::info('Order moved to preparation after simulated marketplace purchase: ' . $order->id);
-                }
-            }
+            $message = $statusMessages[$newStatus] ?? "Order {$order->id} status updated to {$newStatus}";
+            Log::info($message, [
+                'inventory_status' => $validated['inventory_status'],
+                'missing_ingredients' => $validated['missing_ingredients'] ?? []
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Warehouse callback processed',
-                'order_status' => $order->status
+                'message' => 'Warehouse callback processed successfully',
+                'order_status' => $order->status,
+                'inventory_status' => $validated['inventory_status']
             ]);
 
         } catch (\Exception $e) {
@@ -92,7 +87,7 @@ class CallbackController extends Controller
 
             try {
                 $order = Order::find($validated['order_id']);
-                if ($order && $order->status !== Order::STATUS_FAILED) {
+                if ($order && !in_array($order->status, [Order::STATUS_FAILED, Order::STATUS_FAILED_UNAVAILABLE_INGREDIENTS])) {
                     $order->update(['status' => Order::STATUS_FAILED]);
                 }
             } catch (\Exception $updateException) {
@@ -104,6 +99,17 @@ class CallbackController extends Controller
                 'message' => 'Failed to process warehouse callback: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function mapInventoryStatusToOrderStatus(string $inventoryStatus): string
+    {
+        return match($inventoryStatus) {
+            'sufficient' => Order::STATUS_IN_PREPARATION,
+            'waiting_marketplace' => Order::STATUS_WAITING_MARKETPLACE,
+            'failed_unavailable_ingredients' => Order::STATUS_FAILED_UNAVAILABLE_INGREDIENTS,
+            'insufficient' => Order::STATUS_WAITING_MARKETPLACE, // Legacy support
+            default => Order::STATUS_FAILED
+        };
     }
 
     public function marketplaceCompleted(Request $request): JsonResponse
