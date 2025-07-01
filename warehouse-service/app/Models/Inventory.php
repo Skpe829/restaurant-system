@@ -51,29 +51,27 @@ class Inventory
         return self::$tableName;
     }
 
-    // ✅ Inventario inicial optimizado para las recetas del sistema
-    // ✅ Inventario inicial que coincide exactamente con las recetas del Kitchen Service
     public static function getInitialInventory(): array
     {
         return [
             // Ingredientes principales de las recetas
-            'tomato' => ['quantity' => 15, 'unit' => 'kg'],
-            'cheese' => ['quantity' => 12, 'unit' => 'kg'],
-            'onion' => ['quantity' => 10, 'unit' => 'kg'],
-            'lettuce' => ['quantity' => 8, 'unit' => 'kg'],
-            'meat' => ['quantity' => 15, 'unit' => 'kg'],
-            'chicken' => ['quantity' => 15, 'unit' => 'kg'],
-            'rice' => ['quantity' => 12, 'unit' => 'kg'],
-            'lemon' => ['quantity' => 8, 'unit' => 'kg'],
-            'potato' => ['quantity' => 10, 'unit' => 'kg'],
+            'tomato' => ['quantity' => 15, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'cheese' => ['quantity' => 12, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'onion' => ['quantity' => 10, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'lettuce' => ['quantity' => 8, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'meat' => ['quantity' => 15, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'chicken' => ['quantity' => 15, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'rice' => ['quantity' => 12, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'lemon' => ['quantity' => 8, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'potato' => ['quantity' => 10, 'unit' => 'kg', 'reserved_quantity' => 0],
 
             // Ingredientes de cocina
-            'flour' => ['quantity' => 10, 'unit' => 'kg'],
-            'olive_oil' => ['quantity' => 8, 'unit' => 'liters'],
-            'croutons' => ['quantity' => 5, 'unit' => 'kg'],
+            'flour' => ['quantity' => 10, 'unit' => 'kg', 'reserved_quantity' => 0],
+            'olive_oil' => ['quantity' => 8, 'unit' => 'liters', 'reserved_quantity' => 0],
+            'croutons' => ['quantity' => 5, 'unit' => 'kg', 'reserved_quantity' => 0],
 
             // Ingrediente extra de la lista original
-            'ketchup' => ['quantity' => 5, 'unit' => 'liters'],
+            'ketchup' => ['quantity' => 5, 'unit' => 'liters', 'reserved_quantity' => 0],
         ];
     }
 
