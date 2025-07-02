@@ -26,4 +26,26 @@ class KitchenController extends Controller
 
         return response()->json($result, $statusCode);
     }
+
+    public function startPreparation(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order_id' => 'required|string',
+            'selected_recipes' => 'required|array',
+            'selected_recipes.*.name' => 'required|string',
+            'selected_recipes.*.ingredients' => 'required|array',
+        ]);
+
+        $result = $this->kitchenService->startPreparation(
+            $validated['order_id'],
+            $validated['selected_recipes']
+        );
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'preparation_time_minutes' => $result['total_preparation_time'] ?? 0,
+            'estimated_ready_at' => $result['estimated_ready_at'] ?? null
+        ]);
+    }
 }
