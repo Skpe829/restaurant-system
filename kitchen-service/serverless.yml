@@ -6,6 +6,30 @@ provider:
   runtime: provided.al2
   region: us-east-1
   stage: ${opt:stage, 'dev'}
+
+  httpApi:
+    cors:
+      allowedOrigins:
+        - "http://localhost:3000"
+        - "http://localhost:5173"
+        - "https://restaurant-frontend-lime.vercel.app"
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - X-Requested-With
+        - Accept
+        - Origin
+        - X-Api-Key
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - HEAD
+        - PATCH
+      allowCredentials: false
+      maxAge: 86400
   environment:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
@@ -16,14 +40,14 @@ custom:
       allowedOrigins:
         - "http://localhost:3000"
         - "http://localhost:5173"
-        - "https://restaurant-frontend.vercel.app"
-        - "*"
+        - "https://restaurant-frontend-lime.vercel.app"
       allowedHeaders:
         - Content-Type
         - Authorization
         - X-Requested-With
         - Accept
         - Origin
+        - X-Api-Key
       allowedMethods:
         - GET
         - POST
@@ -31,6 +55,7 @@ custom:
         - DELETE
         - OPTIONS
         - HEAD
+        - PATCH
       allowCredentials: false
       maxAge: 86400
 
@@ -62,7 +87,6 @@ functions:
       - httpApi:
           path: /
           method: ANY
-
   artisan:
     handler: artisan
     timeout: 120
