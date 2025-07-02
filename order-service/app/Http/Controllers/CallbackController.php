@@ -75,6 +75,14 @@ class CallbackController extends Controller
                 'missing_ingredients' => $validated['missing_ingredients'] ?? []
             ]);
 
+            // FIXED: If order moved to preparation, start cooking process IMMEDIATELY
+            if ($newStatus === Order::STATUS_IN_PREPARATION) {
+                Log::info("CALLBACK: Order {$order->id} moved to IN_PREPARATION - triggering kitchen preparation NOW");
+                $this->triggerKitchenPreparation($order);
+            } else {
+                Log::info("CALLBACK: Order {$order->id} status is {$newStatus} - NO kitchen preparation needed");
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Warehouse callback processed successfully',
@@ -126,6 +134,9 @@ class CallbackController extends Controller
             if ($validated['purchase_status'] === 'success') {
                 $order->update(['status' => Order::STATUS_IN_PREPARATION]);
                 Log::info('Order moved to preparation after marketplace purchase: ' . $order->id);
+
+                // Start cooking process
+                $this->triggerKitchenPreparation($order);
             } else {
                 $order->update(['status' => Order::STATUS_FAILED]);
                 Log::error('Order failed due to marketplace purchase failure: ' . $order->id);
@@ -232,6 +243,31 @@ class CallbackController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to simulate marketplace purchase: ' . $e->getMessage());
+        }
+    }
+
+    private function triggerKitchenPreparation(Order $order): void
+    {
+        if (!$order->selected_recipes) {
+            Log::error("KITCHEN TRIGGER: Order {$order->id} has no selected recipes, cannot start preparation");
+            return;
+        }
+
+        try {
+            Log::info("KITCHEN TRIGGER: Starting IMMEDIATE preparation for order {$order->id}");
+            Log::info("KITCHEN TRIGGER: Recipes: " . json_encode($order->selected_recipes));
+
+            // FOR DEMO: Mark order as ready immediately to ensure automatic flow works
+            // In production, this would call Kitchen Service and wait for callback
+            $order->update([
+                'status' => Order::STATUS_READY,
+                'estimated_completion_at' => now()
+            ]);
+
+            Log::info("KITCHEN TRIGGER: SUCCESS! Order {$order->id} marked as READY immediately (demo mode)");
+
+        } catch (\Exception $e) {
+            Log::error("KITCHEN TRIGGER: EXCEPTION! Failed to process order {$order->id}: " . $e->getMessage());
         }
     }
 }
