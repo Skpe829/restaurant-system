@@ -1,353 +1,303 @@
-# Warehouse Service - Restaurant System 🏭
+# 🏪 Warehouse Service - Servicio de Almacén
 
-[![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-orange)](https://aws.amazon.com/lambda/)
-[![PHP 8.2](https://img.shields.io/badge/PHP-8.2-blue)](https://php.net)
-[![Laravel](https://img.shields.io/badge/Laravel-11.x-red)](https://laravel.com)
-[![DynamoDB](https://img.shields.io/badge/Database-DynamoDB-purple)](https://aws.amazon.com/dynamodb/)
-[![Serverless](https://img.shields.io/badge/Framework-Serverless-green)](https://serverless.com)
+## 📋 Descripción General
 
-## 📋 Descripción
+El Warehouse Service es responsable de la gestión completa del inventario del restaurante. Controla el stock de ingredientes, verifica disponibilidad para órdenes, gestiona reservas y consumo, y coordina con el Marketplace Service para la compra de ingredientes faltantes.
 
-El **Warehouse Service** es un microservicio serverless que gestiona el inventario de ingredientes del sistema de restaurante. Utiliza AWS DynamoDB para el almacenamiento persistente y AWS Lambda para el procesamiento sin servidor.
+## 🏗️ Arquitectura del Servicio
 
-### 🎯 Funciones Principales
+### Controladores (Controllers)
 
-- **Gestión de Inventario**: Control completo de stock de ingredientes
-- **Reserva de Ingredientes**: Sistema de reservas para órdenes activas
-- **Verificación de Disponibilidad**: Validación de stock para nuevas órdenes
-- **Notificaciones**: Comunicación con otros microservicios
-- **Operaciones de Stock**: Agregar, consumir y gestionar inventario
+#### 1. `WarehouseController`
+**Ubicación:** `app/Http/Controllers/WarehouseController.php`
 
-## 🏗️ Arquitectura del Sistema
+**Responsabilidades:**
+- Verificar inventario para órdenes específicas
+- Gestionar reservas de ingredientes
+- Procesar consumo de ingredientes
+- Agregar stock desde compras de marketplace
 
-```mermaid
-graph TB
-    subgraph "Frontend Layer"
-        FE[React Frontend]
-    end
-    
-    subgraph "Microservices"
-        OS[Order Service<br/>📦]
-        KS[Kitchen Service<br/>👨‍🍳]
-        WS[Warehouse Service<br/>🏭]
-        MS[Marketplace Service<br/>🛒]
-    end
-    
-    subgraph "AWS Infrastructure"
-        API[API Gateway]
-        LAMBDA[Lambda Functions]
-        DDB[DynamoDB<br/>Inventory Table]
-        CF[CloudFormation]
-    end
-    
-    subgraph "Warehouse Service Components"
-        direction TB
-        WC[WarehouseController]
-        IC[InventoryController]
-        INV[Inventory Model]
-        WHS[WarehouseService]
-    end
-    
-    %% Frontend connections
-    FE --> API
-    
-    %% Service to service communication
-    OS -->|Check Inventory| WS
-    OS -->|Reserve Ingredients| WS
-    KS -->|Consume Ingredients| WS
-    MS -->|Add Stock| WS
-    
-    %% Warehouse Service callbacks
-    WS -->|Inventory Status| OS
-    
-    %% AWS Infrastructure
-    API --> LAMBDA
-    LAMBDA --> DDB
-    
-    %% Internal Warehouse Service
-    LAMBDA --> WC
-    LAMBDA --> IC
-    WC --> WHS
-    IC --> INV
-    WHS --> INV
-    INV --> DDB
-    
-    %% Styling
-    classDef microservice fill:#e1f5fe
-    classDef aws fill:#fff3e0
-    classDef component fill:#f3e5f5
-    
-    class OS,KS,WS,MS microservice
-    class API,LAMBDA,DDB,CF aws
-    class WC,IC,INV,WHS component
+**Endpoints:**
+- `POST /api/check-inventory` - Verificar inventario para una orden
+- `POST /api/reserve-ingredients` - Reservar ingredientes
+- `POST /api/consume-ingredients` - Consumir ingredientes reservados
+- `POST /api/add-stock` - Agregar stock al inventario
+
+**Validaciones:**
+- `order_id`: Requerido para verificación de inventario
+- `required_ingredients`: Array con ingredientes y cantidades
+- `ingredients`: Array con formato ingrediente → cantidad
+
+#### 2. `InventoryController`
+**Ubicación:** `app/Http/Controllers/InventoryController.php`
+
+**Responsabilidades:**
+- Consultar estado completo del inventario
+- Inicializar inventario con valores por defecto
+- Gestionar ingredientes individuales
+- Proporcionar endpoints de administración
+
+**Endpoints:**
+- `GET /api/inventory` - Obtener todo el inventario
+- `GET /api/inventory/{ingredient}` - Consultar ingrediente específico
+- `POST /api/inventory/initialize` - Inicializar inventario
+- `PUT /api/inventory/{ingredient}/add-stock` - Agregar stock a ingrediente
+- `PUT /api/inventory/{ingredient}/reserve` - Reservar stock de ingrediente
+
+### Servicios (Services)
+
+#### `WarehouseService`
+**Ubicación:** `app/Services/WarehouseService.php`
+
+**Funcionalidades principales:**
+
+1. **Análisis de inventario** (`checkInventory`, `analyzeInventoryStatus`)
+   - Verifica disponibilidad de ingredientes requeridos
+   - Identifica ingredientes faltantes
+   - Calcula cantidades disponibles vs necesarias
+
+2. **Gestión de reservas** (`reserveIngredients`)
+   - Reserva ingredientes para órdenes específicas
+   - Implementa rollback automático en caso de fallas
+   - Actualiza cantidades reservadas en DynamoDB
+
+3. **Integración con Marketplace** (`attemptMarketplacePurchase`)
+   - Identifica ingredientes disponibles en marketplace externo
+   - Gestiona compras inteligentes y parciales
+   - Maneja reintentos y circuit breaker
+
+4. **Gestión de stock** (`addStock`, `consumeIngredients`)
+   - Agrega nuevo stock desde compras
+   - Consume ingredientes reservados
+   - Mantiene integridad de datos
+
+5. **Comunicación con servicios** (`notifyOrderService`)
+   - Envía callbacks al Order Service con estados de inventario
+   - Mapea estados de inventario a estados de orden
+   - Maneja errores de comunicación
+
+### Modelos (Models)
+
+#### `Inventory`
+**Ubicación:** `app/Models/Inventory.php`
+**Tipo:** Modelo DynamoDB personalizado
+
+**Propiedades:**
+- `ingredient`: Nombre del ingrediente (clave primaria)
+- `quantity`: Cantidad total en stock
+- `reserved_quantity`: Cantidad reservada para órdenes
+- `unit`: Unidad de medida (kg, liters, etc.)
+- `last_updated`: Timestamp de última actualización
+
+**Métodos principales:**
+
+1. **Gestión de datos:**
+   - `findByIngredient(string $ingredient)`: Buscar por nombre
+   - `getAllInventory()`: Obtener inventario completo
+   - `initializeInventory()`: Crear inventario inicial
+   - `save()`: Guardar cambios en DynamoDB
+
+2. **Lógica de negocio:**
+   - `getAvailableQuantity()`: Cantidad disponible (total - reservada)
+   - `canReserve(int $amount)`: Verificar si se puede reservar
+   - `reserve(int $amount)`: Reservar cantidad específica
+   - `consume(int $amount)`: Consumir cantidad reservada
+   - `addStock(int $amount)`: Agregar nuevo stock
+
+**Inventario inicial predefinido:**
+```php
+'tomato' => 15 kg       'cheese' => 12 kg      'onion' => 10 kg
+'lettuce' => 8 kg       'meat' => 15 kg        'chicken' => 15 kg
+'rice' => 12 kg         'lemon' => 8 kg        'potato' => 10 kg
+'flour' => 10 kg        'olive_oil' => 8L      'croutons' => 5 kg
+'ketchup' => 5L
 ```
 
-## 🔄 Flujo de Trabajo del Inventario
+## 📊 Base de Datos
 
-```mermaid
-sequenceDiagram
-    participant Order as Order Service
-    participant WH as Warehouse Service
-    participant DB as DynamoDB
-    participant Kitchen as Kitchen Service
-    
-    Note over Order,Kitchen: 1. Verificación de Inventario
-    Order->>WH: POST /api/check-inventory
-    WH->>DB: Query ingredient availability
-    DB-->>WH: Return current stock
-    
-    alt Stock Sufficient
-        WH->>DB: Reserve ingredients
-        WH-->>Order: ✅ Inventory sufficient
-        Note over WH: Ingredients reserved for order
-    else Stock Insufficient
-        WH-->>Order: ❌ Missing ingredients
-        Note over Order: Order cannot be fulfilled
-    end
-    
-    Note over Order,Kitchen: 2. Procesamiento de Orden
-    Order->>Kitchen: Send order to kitchen
-    Kitchen->>WH: POST /api/consume-ingredients
-    WH->>DB: Consume reserved ingredients
-    DB-->>WH: Stock updated
-    WH-->>Kitchen: ✅ Ingredients consumed
-    
-    Note over Order,Kitchen: 3. Reabastecimiento (Opcional)
-    Order->>WH: POST /api/add-stock
-    WH->>DB: Add new inventory
-    DB-->>WH: Stock increased
-    WH-->>Order: ✅ Stock added
-```
+### Tabla Principal: `restaurant-inventory-dev`
+**Tipo:** DynamoDB
 
-## 📊 Modelo de Datos
-
-### Tabla de Inventario (DynamoDB)
-
+**Estructura:**
 ```json
 {
-  "ingredient": "tomato",           // 🔑 Partition Key
-  "quantity": 15,                  // Cantidad total disponible
-  "reserved_quantity": 3,          // Cantidad reservada para órdenes
-  "unit": "kg",                   // Unidad de medida
-  "last_updated": "2024-01-15T10:30:00Z"
+  "ingredient": "string",        // Clave primaria (ej: "tomato")
+  "quantity": "number",          // Cantidad total
+  "reserved_quantity": "number", // Cantidad reservada
+  "unit": "string",             // Unidad (kg, liters)
+  "last_updated": "timestamp"   // Última actualización
 }
 ```
 
-### Cantidad Disponible
-```
-available_quantity = quantity - reserved_quantity
-```
-
-## 🚀 API Endpoints
-
-### 📦 Operaciones de Warehouse
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `POST` | `/api/check-inventory` | Verifica disponibilidad para una orden |
-| `POST` | `/api/reserve-ingredients` | Reserva ingredientes |
-| `POST` | `/api/consume-ingredients` | Consume ingredientes reservados |
-| `POST` | `/api/add-stock` | Agrega stock al inventario |
-
-### 📋 Gestión de Inventario
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `GET` | `/api/inventory` | Lista todo el inventario |
-| `GET` | `/api/inventory/{ingredient}` | Obtiene detalles de un ingrediente |
-| `POST` | `/api/inventory/initialize` | Inicializa inventario con stock predeterminado |
-| `PUT` | `/api/inventory/{ingredient}/add-stock` | Agrega stock a ingrediente específico |
-| `PUT` | `/api/inventory/{ingredient}/reserve` | Reserva stock de ingrediente específico |
-
-## 📝 Ejemplos de Uso
-
-### 🔍 Verificar Inventario para Orden
-
-```bash
-curl -X POST https://api.warehouse.com/api/check-inventory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "order_id": "order_123",
-    "required_ingredients": {
-      "tomato": 2,
-      "cheese": 1,
-      "meat": 1
-    }
-  }'
-```
-
-**Respuesta:**
+**Ejemplo de item:**
 ```json
 {
-  "success": true,
-  "data": {
-    "sufficient": true,
-    "available": {
-      "tomato": 15,
-      "cheese": 12,
-      "meat": 15
-    },
-    "missing": {}
+  "ingredient": "tomato",
+  "quantity": 15,
+  "reserved_quantity": 3,
+  "unit": "kg",
+  "last_updated": "2024-12-19T10:30:00Z"
+}
+```
+
+## 🔄 Flujo de Verificación de Inventario
+
+### 1. **Recepción de solicitud**
+```
+Order Service → POST /api/check-inventory
+{
+  "order_id": "uuid",
+  "required_ingredients": {
+    "tomato": 6,
+    "cheese": 4,
+    "meat": 8
   }
 }
 ```
 
-### 📦 Reservar Ingredientes
-
-```bash
-curl -X POST https://api.warehouse.com/api/reserve-ingredients \
-  -H "Content-Type: application/json" \
-  -d '{
-    "ingredients": {
-      "tomato": 2,
-      "cheese": 1
-    }
-  }'
+### 2. **Análisis de disponibilidad**
+```
+WarehouseService::analyzeInventoryStatus()
+        ↓
+Por cada ingrediente:
+├─ Buscar en DynamoDB
+├─ Calcular disponible = total - reservado
+└─ Comparar con requerido
 ```
 
-### 🍽️ Consumir Ingredientes
+### 3. **Escenarios de respuesta**
 
-```bash
-curl -X POST https://api.warehouse.com/api/consume-ingredients \
-  -H "Content-Type: application/json" \
-  -d '{
-    "ingredients": {
-      "tomato": 2,
-      "cheese": 1
-    }
-  }'
+#### **Escenario A: Inventario Suficiente**
+```
+✅ Todos los ingredientes disponibles
+        ↓
+Reserve ingredientes
+        ↓
+Callback: inventory_status = "sufficient"
+        ↓
+Order status → "in_preparation"
 ```
 
-### 📊 Ver Inventario Completo
-
-```bash
-curl -X GET https://api.warehouse.com/api/inventory
+#### **Escenario B: Inventario Insuficiente**
+```
+❌ Faltan ingredientes
+        ↓
+Identificar ingredientes faltantes
+        ↓
+Verificar disponibilidad en marketplace
+        ↓
+┌─ Disponibles → Comprar en marketplace
+├─ No disponibles → Status "failed_unavailable_ingredients"
+└─ Error compra → Status "waiting_marketplace"
 ```
 
-**Respuesta:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "ingredient": "tomato",
-      "total_quantity": 15,
-      "available_quantity": 13,
-      "reserved_quantity": 2,
-      "unit": "kg",
-      "last_updated": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "total_items": 13
-}
+## 🛒 Integración con Marketplace
+
+### Ingredientes disponibles en marketplace externo:
+```php
+MARKETPLACE_INGREDIENTS = [
+    'tomato', 'lemon', 'potato', 'rice', 'ketchup',
+    'lettuce', 'onion', 'cheese', 'meat', 'chicken'
+]
+
+// ❌ NO disponibles en marketplace:
+// 'flour', 'olive_oil', 'croutons'
 ```
 
-## 🎮 Ingredientes Disponibles
+### Lógica de compra inteligente:
+1. **Separar ingredientes** por disponibilidad en marketplace
+2. **Comprar disponibles** usando Marketplace Service
+3. **Fallar ingredientes no disponibles** inmediatamente
+4. **Gestionar compras parciales** correctamente
+5. **Implementar reintentos** con exponential backoff
 
-El sistema viene pre-configurado con estos ingredientes:
+## 🌐 Variables de Entorno
 
-- **Ingredientes Principales**: `tomato`, `cheese`, `onion`, `lettuce`, `meat`, `chicken`, `rice`, `lemon`, `potato`
-- **Ingredientes de Cocina**: `flour`, `olive_oil`, `croutons`
-- **Condimentos**: `ketchup`
+```env
+# Configuración de servicios
+ORDER_SERVICE_URL=https://order-service-url
+MARKETPLACE_SERVICE_URL=https://marketplace-service-url
 
-## ⚙️ Configuración y Despliegue
+# Configuración DynamoDB
+AWS_DEFAULT_REGION=us-east-1
+DYNAMODB_TABLE=restaurant-inventory-dev
 
-### Variables de Entorno
-
-```yaml
-# AWS Configuration
-AWS_DEFAULT_REGION: us-east-1
-DYNAMODB_TABLE: restaurant-inventory-dev
-
-# Service URLs
-ORDER_SERVICE_URL: https://api.order.com
-
-# Laravel Configuration
-APP_ENV: production
-APP_KEY: base64:ZYNikPgxfyC/VuJ7XxJBm5rGQdP8qI5nkPMuLvGZThY=
+# Configuración de reintentos
+MARKETPLACE_MAX_RETRIES=3
+MARKETPLACE_TIMEOUT=60
 ```
 
-### 🚀 Comandos de Despliegue
+## 📝 Estados y Callbacks
 
-```bash
-# Instalar dependencias
-composer install --no-dev --optimize-autoloader
+### Estados de inventario enviados al Order Service:
+- `sufficient` → Todos los ingredientes disponibles
+- `waiting_marketplace` → Esperando compra de ingredientes
+- `failed_unavailable_ingredients` → Ingredientes no disponibles
+- `failed` → Error general
 
-# Desplegar a AWS
-serverless deploy --stage dev
-
-# Inicializar inventario
-curl -X POST https://your-api-url/api/inventory/initialize
+### Mapeo a estados de orden:
+```php
+'sufficient' → 'in_preparation'
+'waiting_marketplace' → 'waiting_marketplace'  
+'failed_unavailable_ingredients' → 'failed_unavailable_ingredients'
+'failed' → 'failed'
 ```
 
-### 📋 Requisitos AWS
+## 📊 Logs y Monitoreo
 
-- **Lambda Function**: Runtime PHP 8.2
-- **DynamoDB Table**: `restaurant-inventory-{stage}`
-- **IAM Permissions**: DynamoDB Read/Write access
-- **API Gateway**: HTTP API with CORS enabled
+### Eventos principales logged:
+- Verificación de inventario por orden
+- Reservas y consumos de ingredientes
+- Compras en marketplace
+- Actualizaciones de stock
+- Errores de comunicación
 
-## 🔧 Desarrollo Local
-
-```bash
-# Instalar dependencias
-composer install
-
-# Configurar variables de entorno
-cp .env.example .env
-
-# Generar clave de aplicación
-php artisan key:generate
-
-# Ejecutar tests
-php artisan test
+**Ejemplos de logs:**
+```
+Warehouse: Checking inventory for order ORD-12345678
+Warehouse: Inventory sufficient for order ORD-12345678
+Warehouse: Order ORD-12345678 waiting for marketplace purchase
+Reserved 5 units of tomato, new_reserved: 8, available: 7
+Marketplace purchase successful for order ORD-12345678
 ```
 
-## 📈 Monitoreo y Logs
+## 🧪 Testing y Administración
 
-### CloudWatch Logs
-- Todos los logs se envían automáticamente a CloudWatch
-- Filtros disponibles por nivel de log (INFO, WARNING, ERROR)
+### Endpoints de administración:
+```http
+# Consultar inventario completo
+GET /api/inventory
 
-### Métricas Importantes
-- **Invocaciones Lambda**: Número de requests procesados
-- **Duración**: Tiempo de respuesta promedio
-- **Errores**: Rate de errores por endpoint
-- **DynamoDB**: Read/Write capacity y throttling
+# Inicializar inventario (solo si está vacío)
+POST /api/inventory/initialize
 
-## 🔒 Seguridad
+# Agregar stock a ingrediente específico
+PUT /api/inventory/tomato/add-stock
+{ "amount": 10 }
 
-- **Encriptación**: DynamoDB con SSE enabled
-- **IAM Roles**: Permisos mínimos necesarios
-- **CORS**: Configurado para frontend específicos
-- **Backup**: Point-in-time recovery habilitado
+# Reservar stock para testing
+PUT /api/inventory/cheese/reserve  
+{ "amount": 3 }
+```
 
-## 🏷️ Versionado
+### Casos de prueba críticos:
+1. **Inventario suficiente** (reserva exitosa)
+2. **Inventario insuficiente con marketplace** (compra exitosa)
+3. **Ingredientes no disponibles** (fallo controlado)
+4. **Compra parcial** (algunos ingredientes comprados)
+5. **Rollback de reservas** (en caso de fallas)
 
-- **Versión Actual**: 2.0.0-production
-- **Database**: DynamoDB
-- **Runtime**: AWS Lambda (PHP 8.2)
-- **Framework**: Laravel 11.x
+## 🔧 Gestión de Errores
 
-## 🤝 Integración con Otros Servicios
+### Estrategias de recuperación:
+- **Rollback automático** de reservas en caso de falla
+- **Reintentos inteligentes** para compras de marketplace
+- **Circuit breaker** para marketplace no disponible
+- **Estados específicos** para diferentes tipos de falla
+- **Logs detallados** para debugging
 
-### Order Service
-- Recibe notificaciones de disponibilidad de inventario
-- Callback endpoint: `/api/callbacks/warehouse-completed`
-
-### Kitchen Service
-- Consume ingredientes después de preparar platos
-- Usa endpoint: `/api/consume-ingredients`
-
-### Marketplace Service
-- Agrega stock desde compras externas
-- Usa endpoint: `/api/add-stock`
-
----
-
-**📧 Contacto**: Para soporte técnico, consultar documentación del sistema principal.
-
-**🔗 Enlaces Útiles**:
-- [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/)
-- [DynamoDB Best Practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html)
-- [Laravel Documentation](https://laravel.com/docs)
+### Integridad de datos:
+- Validación de cantidades disponibles antes de reservar
+- Verificación de cantidades reservadas antes de consumir
+- Consistencia eventual con DynamoDB
+- Manejo de concurrencia en reservas simultáneas
