@@ -10,12 +10,13 @@ Route::prefix('api')->group(function () {
     Route::post('/reserve-ingredients', [WarehouseController::class, 'reserveIngredients']);
     Route::post('/consume-ingredients', [WarehouseController::class, 'consumeIngredients']);
     Route::post('/add-stock', [WarehouseController::class, 'addStock']);
+    Route::post('/process-waiting-orders', [WarehouseController::class, 'processWaitingOrders']);
 
     // Inventory management
     Route::get('/inventory', [InventoryController::class, 'index']);
     Route::get('/inventory/{ingredient}', [InventoryController::class, 'show']);
     Route::post('/inventory/initialize', [InventoryController::class, 'initialize']);
-    
+
     // ✅ Nuevos endpoints para testing y gestión avanzada
     Route::put('/inventory/{ingredient}/add-stock', [InventoryController::class, 'addStock']);
     Route::put('/inventory/{ingredient}/reserve', [InventoryController::class, 'reserveStock']);
