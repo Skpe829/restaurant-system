@@ -15,17 +15,24 @@ custom:
     cors:
       allowedOrigins:
         - "http://localhost:3000"
-        - "https://*.vercel.app"
+        - "http://localhost:5173"
+        - "https://restaurant-frontend.vercel.app"
+        - "*"
       allowedHeaders:
         - Content-Type
         - Authorization
+        - X-Requested-With
+        - Accept
+        - Origin
       allowedMethods:
         - GET
         - POST
         - PUT
         - DELETE
         - OPTIONS
-      allowCredentials: true
+        - HEAD
+      allowCredentials: false
+      maxAge: 86400
 
 functions:
   web:
