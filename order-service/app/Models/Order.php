@@ -21,6 +21,7 @@ class Order
     public const STATUS_FAILED = 'failed';
     public const STATUS_WAITING_MARKETPLACE = 'waiting_marketplace';
     public const STATUS_FAILED_UNAVAILABLE_INGREDIENTS = 'failed_unavailable_ingredients';
+    public const STATUS_NEEDS_EXTERNAL_PURCHASE = 'needs_external_purchase';
 
     // Propiedades del modelo
     public $id;

@@ -49,8 +49,8 @@ class CallbackController extends Controller
     {
         $validated = $request->validate([
             'order_id' => 'required|string',
-            'inventory_status' => 'required|string|in:sufficient,insufficient,waiting_marketplace,failed_unavailable_ingredients',
-            'order_status' => 'nullable|string|in:in_preparation,waiting_marketplace,failed_unavailable_ingredients,failed',
+            'inventory_status' => 'required|string|in:sufficient,insufficient,waiting_marketplace,needs_external_purchase,failed_unavailable_ingredients',
+            'order_status' => 'nullable|string|in:in_preparation,waiting_marketplace,needs_external_purchase,failed_unavailable_ingredients,failed',
             'missing_ingredients' => 'nullable|array',
         ]);
 
@@ -65,6 +65,7 @@ class CallbackController extends Controller
             $statusMessages = [
                 Order::STATUS_IN_PREPARATION => "Order {$order->id} moved to preparation - all ingredients available",
                 Order::STATUS_WAITING_MARKETPLACE => "Order {$order->id} waiting for marketplace purchase",
+                Order::STATUS_NEEDS_EXTERNAL_PURCHASE => "Order {$order->id} needs external purchase - some ingredients only available in other stores",
                 Order::STATUS_FAILED_UNAVAILABLE_INGREDIENTS => "Order {$order->id} failed - ingredients not available in marketplace",
                 Order::STATUS_FAILED => "Order {$order->id} failed due to warehouse error"
             ];
@@ -114,8 +115,9 @@ class CallbackController extends Controller
         return match($inventoryStatus) {
             'sufficient' => Order::STATUS_IN_PREPARATION,
             'waiting_marketplace' => Order::STATUS_WAITING_MARKETPLACE,
+            'needs_external_purchase' => Order::STATUS_NEEDS_EXTERNAL_PURCHASE,
             'failed_unavailable_ingredients' => Order::STATUS_FAILED_UNAVAILABLE_INGREDIENTS,
-            'insufficient' => Order::STATUS_WAITING_MARKETPLACE, // Legacy support
+            'insufficient' => Order::STATUS_WAITING_MARKETPLACE,
             default => Order::STATUS_FAILED
         };
     }
@@ -253,21 +255,34 @@ class CallbackController extends Controller
             return;
         }
 
+        $kitchenUrl = env('KITCHEN_SERVICE_URL');
+
+        if (!$kitchenUrl) {
+            Log::warning("KITCHEN TRIGGER: Kitchen service URL not configured for order {$order->id}");
+            return;
+        }
+
         try {
-            Log::info("KITCHEN TRIGGER: Starting IMMEDIATE preparation for order {$order->id}");
+            Log::info("KITCHEN TRIGGER: Starting preparation for order {$order->id} with Kitchen Service");
             Log::info("KITCHEN TRIGGER: Recipes: " . json_encode($order->selected_recipes));
 
-            // FOR DEMO: Mark order as ready immediately to ensure automatic flow works
-            // In production, this would call Kitchen Service and wait for callback
-            $order->update([
-                'status' => Order::STATUS_READY,
-                'estimated_completion_at' => now()
+            // Call Kitchen Service to start preparation
+            $response = Http::timeout(30)->post("{$kitchenUrl}/api/start-preparation", [
+                'order_id' => $order->id,
+                'selected_recipes' => $order->selected_recipes,
             ]);
 
-            Log::info("KITCHEN TRIGGER: SUCCESS! Order {$order->id} marked as READY immediately (demo mode)");
+            if ($response->successful()) {
+                Log::info("KITCHEN TRIGGER: Successfully triggered kitchen preparation for order {$order->id}");
+            } else {
+                Log::error("KITCHEN TRIGGER: Failed to trigger kitchen preparation for order {$order->id}", [
+                    'status' => $response->status(),
+                    'response' => $response->body()
+                ]);
+            }
 
         } catch (\Exception $e) {
-            Log::error("KITCHEN TRIGGER: EXCEPTION! Failed to process order {$order->id}: " . $e->getMessage());
+            Log::error("KITCHEN TRIGGER: EXCEPTION! Failed to trigger kitchen for order {$order->id}: " . $e->getMessage());
         }
     }
 }
