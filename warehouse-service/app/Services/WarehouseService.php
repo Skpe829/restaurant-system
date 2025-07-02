@@ -46,9 +46,9 @@ class WarehouseService
                     $this->notifyOrderService($orderId, 'waiting_marketplace', $purchaseResult['remaining_missing']);
                     Log::info("Warehouse: Order {$orderId} partially fulfilled, waiting for more ingredients");
                 } else if ($purchaseResult['status'] === 'unavailable') {
-                    // Ingredients not available in marketplace
-                    $this->notifyOrderService($orderId, 'failed_unavailable_ingredients', $purchaseResult['unavailable_ingredients']);
-                    Log::warning("Warehouse: Order {$orderId} failed - ingredients not available in marketplace");
+                    // Ingredients not available in marketplace - need external purchase
+                    $this->notifyOrderService($orderId, 'needs_external_purchase', $purchaseResult['unavailable_ingredients']);
+                    Log::warning("Warehouse: Order {$orderId} needs external purchase - ingredients not available in marketplace");
                 } else {
                     // Purchase failed after retries
                     $this->notifyOrderService($orderId, 'waiting_marketplace', $inventoryStatus['missing']);
@@ -185,7 +185,69 @@ class WarehouseService
         return Inventory::getAllInventory();
     }
 
-    // ✅ New intelligent marketplace purchase logic
+    public function processWaitingMarketplaceOrders(): array
+    {
+        $orderServiceUrl = env('ORDER_SERVICE_URL');
+        if (!$orderServiceUrl) {
+            return ['success' => false, 'message' => 'Order service URL not configured'];
+        }
+
+        try {
+            Log::info("Warehouse: Starting auto-retry process for waiting marketplace orders");
+
+            // Get all orders in waiting_marketplace status
+            $response = Http::timeout(30)->get("{$orderServiceUrl}/api/orders/status/waiting_marketplace");
+
+            if (!$response->successful()) {
+                return ['success' => false, 'message' => 'Failed to fetch waiting orders'];
+            }
+
+            $waitingOrders = $response->json()['data'] ?? [];
+            $processedCount = 0;
+            $successCount = 0;
+
+            foreach ($waitingOrders as $order) {
+                if (!isset($order['id'], $order['required_ingredients']) || empty($order['required_ingredients'])) {
+                    continue;
+                }
+
+                $processedCount++;
+                Log::info("Warehouse: Auto-retrying marketplace purchase for order {$order['id']}");
+
+                // Re-attempt inventory check (which includes marketplace purchase)
+                $result = $this->checkInventory($order['id'], $order['required_ingredients']);
+
+                if ($result['sufficient'] ?? false) {
+                    $successCount++;
+                    Log::info("Warehouse: Auto-retry successful for order {$order['id']}");
+                } else {
+                    Log::info("Warehouse: Auto-retry still pending for order {$order['id']}: " . json_encode($result));
+                }
+
+                // Small delay between orders to avoid overwhelming the marketplace API
+                sleep(1);
+            }
+
+            $message = "Processed {$processedCount} waiting orders, {$successCount} successful";
+            Log::info("Warehouse: Auto-retry process completed: {$message}");
+
+            return [
+                'success' => true,
+                'message' => $message,
+                'processed' => $processedCount,
+                'successful' => $successCount,
+                'remaining_waiting' => $processedCount - $successCount
+            ];
+
+        } catch (\Exception $e) {
+            Log::error("Warehouse: Auto-retry process failed: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Auto-retry process failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
     private function attemptMarketplacePurchase(string $orderId, array $missingIngredients): array
     {
         // Ingredients available in marketplace (from external API)
@@ -193,7 +255,6 @@ class WarehouseService
             'tomato', 'lemon', 'potato', 'rice', 'ketchup',
             'lettuce', 'onion', 'cheese', 'meat', 'chicken'
         ];
-        // ❌ NOT available: croutons, flour, olive_oil
 
         $availableInMarketplace = [];
         $unavailableIngredients = [];
@@ -212,7 +273,6 @@ class WarehouseService
             'unavailable_ingredients' => $unavailableIngredients
         ]);
 
-        // If no ingredients are available in marketplace, fail immediately
         if (empty($availableInMarketplace)) {
             return [
                 'status' => 'unavailable',
@@ -221,32 +281,135 @@ class WarehouseService
             ];
         }
 
-        // Try to purchase available ingredients even if some are not available
-        $purchaseResult = $this->purchaseFromMarketplace($orderId, $availableInMarketplace);
+        $maxAttempts = 8;
+        $attempt = 1;
+        $totalPurchased = [];
+        $originalNeeded = $availableInMarketplace; // Track original requirements
 
-        // If some ingredients are not available in marketplace
-        if (!empty($unavailableIngredients)) {
-            if ($purchaseResult['status'] === 'success') {
-                // Successfully purchased some ingredients, but still missing others
+        while ($attempt <= $maxAttempts) {
+            $stillNeeded = [];
+            foreach ($originalNeeded as $ingredient => $originalAmount) {
+                $alreadyGot = $totalPurchased[$ingredient] ?? 0;
+                $remaining = $originalAmount - $alreadyGot;
+
+                if ($remaining > 0) {
+                    $stillNeeded[$ingredient] = $remaining;
+                }
+            }
+
+            if (empty($stillNeeded)) {
+                Log::info("Warehouse: Successfully obtained ALL required ingredients for order {$orderId} in {$attempt} attempts", [
+                    'original_needed' => $originalNeeded,
+                    'total_purchased' => $totalPurchased
+                ]);
+
+                if (empty($unavailableIngredients)) {
+                    return [
+                        'status' => 'success',
+                        'purchased_ingredients' => $totalPurchased,
+                        'message' => "All ingredients purchased successfully in {$attempt} attempts"
+                    ];
+                } else {
+                    return [
+                        'status' => 'partial',
+                        'purchased_ingredients' => $totalPurchased,
+                        'remaining_missing' => $unavailableIngredients,
+                        'message' => "All marketplace ingredients obtained, but some ingredients not available in marketplace"
+                    ];
+                }
+            }
+
+            Log::info("Warehouse: Purchase attempt {$attempt}/{$maxAttempts} for order {$orderId}", [
+                'still_needed' => $stillNeeded,
+                'already_purchased' => $totalPurchased
+            ]);
+
+            $purchaseResult = $this->purchaseFromMarketplace($orderId, $stillNeeded);
+
+            if ($purchaseResult['status'] === 'success' || $purchaseResult['status'] === 'partial') {
+                $purchased = $purchaseResult['purchased_ingredients'] ?? [];
+
+                foreach ($purchased as $ingredient => $quantity) {
+                    $totalPurchased[$ingredient] = ($totalPurchased[$ingredient] ?? 0) + $quantity;
+
+                    Log::info("Warehouse: Got {$quantity} units of {$ingredient}, total now: {$totalPurchased[$ingredient]}/{$originalNeeded[$ingredient]}");
+                }
+
+                $hasProgress = !empty($purchased);
+                if (!$hasProgress) {
+                    Log::warning("Warehouse: No progress on attempt {$attempt} for order {$orderId} - marketplace may be empty");
+
+                    // Wait longer if no progress to avoid hammering empty marketplace
+                    if ($attempt < $maxAttempts) {
+                        sleep(5); // 5 second delay when no progress
+                    }
+                } else {
+                    // Small delay between successful attempts
+                    if ($attempt < $maxAttempts) {
+                        sleep(1);
+                    }
+                }
+            } else {
+                Log::warning("Warehouse: Purchase attempt {$attempt} failed completely for order {$orderId}");
+
+                // Wait before retrying failed attempts
+                if ($attempt < $maxAttempts) {
+                    sleep(3);
+                }
+            }
+
+            $attempt++;
+        }
+
+        // Final evaluation after all attempts
+        $finalStillNeeded = [];
+        foreach ($originalNeeded as $ingredient => $originalAmount) {
+            $alreadyGot = $totalPurchased[$ingredient] ?? 0;
+            $remaining = $originalAmount - $alreadyGot;
+
+            if ($remaining > 0) {
+                $finalStillNeeded[$ingredient] = $remaining;
+            }
+        }
+
+        if (empty($finalStillNeeded)) {
+            // Got everything from marketplace
+            $allMissing = $unavailableIngredients;
+
+            if (empty($allMissing)) {
                 return [
-                    'status' => 'partial',
-                    'purchased_ingredients' => $purchaseResult['purchased_ingredients'] ?? [],
-                    'remaining_missing' => $unavailableIngredients,
-                    'message' => 'Partial purchase successful, some ingredients not available in marketplace'
+                    'status' => 'success',
+                    'purchased_ingredients' => $totalPurchased,
+                    'message' => "All ingredients obtained after {$maxAttempts} attempts"
                 ];
             } else {
-                // Failed to purchase available ingredients AND have unavailable ones
                 return [
-                    'status' => 'unavailable',
-                    'unavailable_ingredients' => $unavailableIngredients,
-                    'failed_purchase' => $purchaseResult,
-                    'message' => 'Some ingredients not available in marketplace and purchase failed for others'
+                    'status' => 'partial',
+                    'purchased_ingredients' => $totalPurchased,
+                    'remaining_missing' => $allMissing,
+                    'message' => "All marketplace ingredients obtained, but some ingredients not available in marketplace"
                 ];
             }
         }
 
-        // All missing ingredients were available in marketplace
-        return $purchaseResult;
+        // Still missing some marketplace ingredients after all attempts
+        if (!empty($totalPurchased)) {
+            $allMissing = array_merge($finalStillNeeded, $unavailableIngredients);
+
+            return [
+                'status' => 'partial',
+                'purchased_ingredients' => $totalPurchased,
+                'remaining_missing' => $allMissing,
+                'message' => "Partial success after {$maxAttempts} attempts - still missing: " . implode(', ', array_keys($finalStillNeeded))
+            ];
+        }
+
+        // No ingredients purchased at all
+        return [
+            'status' => 'failed',
+            'unavailable_ingredients' => array_merge($finalStillNeeded, $unavailableIngredients),
+            'message' => "Failed to purchase any ingredients after {$maxAttempts} attempts"
+        ];
     }
 
     private function purchaseFromMarketplace(string $orderId, array $ingredients): array
@@ -379,7 +542,8 @@ class WarehouseService
             $orderStatus = match($status) {
                 'sufficient' => 'in_preparation',
                 'waiting_marketplace' => 'waiting_marketplace',
-                'failed_unavailable_ingredients' => 'failed_unavailable_ingredients',
+                'needs_external_purchase' => 'needs_external_purchase',
+                'failed_unavailable_ingredients' => 'failed_unavailable_ingredients', // Legacy support
                 default => 'failed'
             };
 

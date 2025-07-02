@@ -83,10 +83,10 @@ class WarehouseController extends Controller
         ]);
 
         try {
-            $success = $this->warehouseService->addStock($validated['ingredients']);
+            $this->warehouseService->addStock($validated['ingredients']);
 
             return response()->json([
-                'success' => $success,
+                'success' => true,
                 'message' => 'Stock added successfully'
             ]);
 
@@ -94,6 +94,21 @@ class WarehouseController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to add stock: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function processWaitingOrders(Request $request): JsonResponse
+    {
+        try {
+            $result = $this->warehouseService->processWaitingMarketplaceOrders();
+
+            return response()->json($result, $result['success'] ? 200 : 500);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process waiting orders: ' . $e->getMessage()
             ], 500);
         }
     }
