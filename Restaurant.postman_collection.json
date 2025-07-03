@@ -1,0 +1,451 @@
+{
+	"info": {
+		"_postman_id": "5e4613db-4a12-43e9-b624-d282e82fc0a5",
+		"name": "Restaurant",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "25752770"
+	},
+	"item": [
+		{
+			"name": "Bodega - Inicializa Inventario",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com/api/inventory/initialize",
+					"protocol": "https",
+					"host": [
+						"0fntnq3zqe",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"inventory",
+						"initialize"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Bodega - Obtiene Inventario",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com/api/inventory",
+					"protocol": "https",
+					"host": [
+						"0fntnq3zqe",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"inventory"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Bodega - Check Inventario",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"order_id\": \"97103fc3-8af3-4420-aee1-4c06f80de309\",\n    \"required_ingredients\": {\n      \"chicken\": 20,\n      \"lemon\": 8,\n      \"onion\": 8,\n      \"potato\": 12,\n      \"olive_oil\": 8\n    }\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com/api/check-inventory",
+					"protocol": "https",
+					"host": [
+						"0fntnq3zqe",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"check-inventory"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cocina",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com",
+					"protocol": "https",
+					"host": [
+						"pgvdivqhbi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cocina - Recetas",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com/api/recipes",
+					"protocol": "https",
+					"host": [
+						"pgvdivqhbi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"recipes"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cocina - Recetas By ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com/api/recipes/1",
+					"protocol": "https",
+					"host": [
+						"pgvdivqhbi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"recipes",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cocina - Recetas Random",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "quantity",
+							"value": "3",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com/api/recipes/random",
+					"protocol": "https",
+					"host": [
+						"pgvdivqhbi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"recipes",
+						"random"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cocina - Procesar Ordenes",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "quantity",
+							"value": "2",
+							"type": "text"
+						},
+						{
+							"key": "order_id",
+							"value": "test-order-123",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com/api/process-order",
+					"protocol": "https",
+					"host": [
+						"pgvdivqhbi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"process-order"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Orden - Crear Orden",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "quantity",
+							"value": "2",
+							"type": "text"
+						},
+						{
+							"key": "customer_name",
+							"value": "RealFlow",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://hkg61nbow3.execute-api.us-east-1.amazonaws.com/api/orders",
+					"protocol": "https",
+					"host": [
+						"hkg61nbow3",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"orders"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Orden - Obtener Orden por ID",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "quantity",
+							"value": "3",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://hkg61nbow3.execute-api.us-east-1.amazonaws.com/api/orders/6ade11f1-4eb6-4a53-ad5e-941fb6559e9b",
+					"protocol": "https",
+					"host": [
+						"hkg61nbow3",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"orders",
+						"6ade11f1-4eb6-4a53-ad5e-941fb6559e9b"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Orden - Obtener Todas Orden",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "quantity",
+							"value": "3",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://hkg61nbow3.execute-api.us-east-1.amazonaws.com/api/orders",
+					"protocol": "https",
+					"host": [
+						"hkg61nbow3",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"orders"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Mercado - Compra",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://recruitment.alegra.com/api/farmers-market/buy?ingredient=tomato",
+					"protocol": "https",
+					"host": [
+						"recruitment",
+						"alegra",
+						"com"
+					],
+					"path": [
+						"api",
+						"farmers-market",
+						"buy"
+					],
+					"query": [
+						{
+							"key": "ingredient",
+							"value": "tomato"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Mercado - Status",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "ingredient",
+							"value": "tomato",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "https://3euu6m4xs6.execute-api.us-east-1.amazonaws.com/api/health",
+					"protocol": "https",
+					"host": [
+						"3euu6m4xs6",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"api",
+						"health"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
