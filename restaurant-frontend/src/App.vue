@@ -61,8 +61,8 @@
         <!-- Recetas Disponibles -->
         <RecipesCard />
         
-        <!-- Compras Marketplace -->
-        <PurchasesCard />
+        <!-- Compras Marketplace 
+        <PurchasesCard />-->
         
         <!-- Historial de Pedidos -->
         <HistoryCard />
