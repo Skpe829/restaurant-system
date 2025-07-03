@@ -1,0 +1,255 @@
+name: Deploy Microservices
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'kitchen-service/**'
+      - 'order-service/**'
+      - 'warehouse-service/**'
+      - 'marketplace-service/**'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'kitchen-service/**'
+      - 'order-service/**'
+      - 'warehouse-service/**'
+      - 'marketplace-service/**'
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  # Job para detectar qué servicios cambiaron
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      kitchen: ${{ steps.changes.outputs.kitchen }}
+      order: ${{ steps.changes.outputs.order }}
+      warehouse: ${{ steps.changes.outputs.warehouse }}
+      marketplace: ${{ steps.changes.outputs.marketplace }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        run: |
+          echo "kitchen=$(git diff --name-only HEAD~ HEAD | grep -q '^kitchen-service/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "order=$(git diff --name-only HEAD~ HEAD | grep -q '^order-service/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "warehouse=$(git diff --name-only HEAD~ HEAD | grep -q '^warehouse-service/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "marketplace=$(git diff --name-only HEAD~ HEAD | grep -q '^marketplace-service/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+  # Job para deploy de Kitchen Service
+  deploy-kitchen:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.kitchen == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, mysql, dom, filter, gd, iconv, json, mbstring, pdo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: kitchen-service/package.json
+
+      - name: Install Serverless Framework
+        run: npm install -g serverless@3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Composer dependencies
+        run: |
+          cd kitchen-service
+          composer install --optimize-autoloader --no-dev
+
+      - name: Install NPM dependencies
+        run: |
+          cd kitchen-service
+          npm ci
+
+      - name: Deploy Kitchen Service
+        run: |
+          cd kitchen-service
+          serverless deploy --stage ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} --verbose
+
+  # Job para deploy de Order Service
+  deploy-order:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.order == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, mysql, dom, filter, gd, iconv, json, mbstring, pdo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: order-service/package.json
+
+      - name: Install Serverless Framework
+        run: npm install -g serverless@3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Composer dependencies
+        run: |
+          cd order-service
+          composer install --optimize-autoloader --no-dev
+
+      - name: Install NPM dependencies
+        run: |
+          cd order-service
+          npm ci
+
+      - name: Deploy Order Service
+        run: |
+          cd order-service
+          serverless deploy --stage ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} --verbose
+
+  # Job para deploy de Warehouse Service
+  deploy-warehouse:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.warehouse == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, mysql, dom, filter, gd, iconv, json, mbstring, pdo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: warehouse-service/package.json
+
+      - name: Install Serverless Framework
+        run: npm install -g serverless@3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Composer dependencies
+        run: |
+          cd warehouse-service
+          composer install --optimize-autoloader --no-dev
+
+      - name: Install NPM dependencies
+        run: |
+          cd warehouse-service
+          npm ci
+
+      - name: Deploy Warehouse Service
+        run: |
+          cd warehouse-service
+          serverless deploy --stage ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} --verbose
+
+  # Job para deploy de Marketplace Service
+  deploy-marketplace:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.marketplace == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, mysql, dom, filter, gd, iconv, json, mbstring, pdo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: marketplace-service/package.json
+
+      - name: Install Serverless Framework
+        run: npm install -g serverless@3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Composer dependencies
+        run: |
+          cd marketplace-service
+          composer install --optimize-autoloader --no-dev
+
+      - name: Install NPM dependencies
+        run: |
+          cd marketplace-service
+          npm ci
+
+      - name: Deploy Marketplace Service
+        run: |
+          cd marketplace-service
+          serverless deploy --stage ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} --verbose
+
+  # Job de notificación del resultado
+  deployment-status:
+    needs: [detect-changes, deploy-kitchen, deploy-order, deploy-warehouse, deploy-marketplace]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployment status
+        run: |
+          echo "=== DEPLOYMENT STATUS ==="
+          echo "Kitchen Service: ${{ needs.deploy-kitchen.result || 'skipped' }}"
+          echo "Order Service: ${{ needs.deploy-order.result || 'skipped' }}"
+          echo "Warehouse Service: ${{ needs.deploy-warehouse.result || 'skipped' }}"
+          echo "Marketplace Service: ${{ needs.deploy-marketplace.result || 'skipped' }}"
+          
+          if [[ "${{ needs.deploy-kitchen.result }}" == "failure" || 
+                "${{ needs.deploy-order.result }}" == "failure" || 
+                "${{ needs.deploy-warehouse.result }}" == "failure" || 
+                "${{ needs.deploy-marketplace.result }}" == "failure" ]]; then
+            echo "❌ One or more deployments failed"
+            exit 1
+          else
+            echo "✅ All deployments completed successfully"
+          fi 
