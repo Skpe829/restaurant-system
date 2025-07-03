@@ -1,0 +1,55 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'restaurant-frontend/**'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'restaurant-frontend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: restaurant-frontend/package-lock.json
+          
+      - name: Install dependencies
+        run: |
+          cd restaurant-frontend
+          npm ci
+          
+      - name: Build project
+        run: |
+          cd restaurant-frontend
+          npm run build
+          
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.ORG_ID }}
+          vercel-project-id: ${{ secrets.PROJECT_ID }}
+          working-directory: ./restaurant-frontend
+          vercel-args: '--prod'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        
+      - name: Deploy Preview to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.ORG_ID }}
+          vercel-project-id: ${{ secrets.PROJECT_ID }}
+          working-directory: ./restaurant-frontend
+        if: github.event_name == 'pull_request' 
