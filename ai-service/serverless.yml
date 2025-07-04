@@ -1,0 +1,170 @@
+service: restaurant-ai-service
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  timeout: 60
+  memorySize: 1024
+
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - Fn::GetAtt: [AIAnalyticsTable, Arn]
+            - Fn::GetAtt: [RecommendationsTable, Arn]
+
+custom:
+  httpApi:
+    cors:
+      allowedOrigins:
+        - "http://localhost:3000"
+        - "http://localhost:5173"
+        - "https://restaurant-frontend-lime.vercel.app"
+        - "*"
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - X-Requested-With
+        - Accept
+        - Origin
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - HEAD
+      allowCredentials: false
+      maxAge: 86400
+
+functions:
+  web:
+    handler: public/index.php
+    layers:
+      - ${bref:layer.php-82-fpm}
+    environment:
+      BREF_BINARY_RESPONSES: 1
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: base64:AI_SERVICE_KEY_HERE
+      DB_CONNECTION: array
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+      
+      # Tables
+      AI_ANALYTICS_TABLE: restaurant-ai-analytics-${self:provider.stage}
+      RECOMMENDATIONS_TABLE: restaurant-recommendations-${self:provider.stage}
+      
+      # Other services URLs
+      ORDER_SERVICE_URL: https://hkg61nbow3.execute-api.us-east-1.amazonaws.com
+      KITCHEN_SERVICE_URL: https://pgvdivqhbi.execute-api.us-east-1.amazonaws.com
+      WAREHOUSE_SERVICE_URL: https://0fntnq3zqe.execute-api.us-east-1.amazonaws.com
+      MARKETPLACE_SERVICE_URL: https://3euu6m4xs6.execute-api.us-east-1.amazonaws.com
+      
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+      - httpApi:
+          path: /
+          method: ANY
+
+  # Función para procesamiento batch de ML
+  ml-processor:
+    handler: app/Functions/MLProcessor.php
+    layers:
+      - ${bref:layer.php-82}
+    timeout: 300
+    memorySize: 2048
+    events:
+      - schedule: rate(1 hour) # Ejecutar cada hora
+    environment:
+      APP_ENV: production
+      AI_ANALYTICS_TABLE: restaurant-ai-analytics-${self:provider.stage}
+      RECOMMENDATIONS_TABLE: restaurant-recommendations-${self:provider.stage}
+
+resources:
+  Resources:
+    # Tabla para almacenar analytics de IA
+    AIAnalyticsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: restaurant-ai-analytics-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: type
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: type-timestamp-index
+            KeySchema:
+              - AttributeName: type
+                KeyType: HASH
+              - AttributeName: timestamp
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+    
+    # Tabla para recomendaciones generadas
+    RecommendationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: restaurant-recommendations-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+          - AttributeName: created_at
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true # Las recomendaciones expiran después de 24h
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+  Outputs:
+    AIServiceUrl:
+      Description: "AI Service API URL"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: HttpApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com'
+      Export:
+        Name: AIServiceUrl-${self:provider.stage}
+
+plugins:
+  - ./vendor/bref/bref 
